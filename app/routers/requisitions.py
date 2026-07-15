@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import models
-from lib import agent, contractops, render, schema
+from lib import agent, contractops, profiles, render, schema
 from lib.db import get_db
 
 router = APIRouter(prefix="/requisitions")
@@ -369,6 +369,41 @@ def amend_contract(req_id: int, amendment: str = Form(...), db: Session = Depend
     req.drift_dismissed = False  # fresh contract clears the alert
     db.commit()
     return RedirectResponse(url=f"/requisitions/{req_id}?tab=contract", status_code=303)
+
+
+# --- Revealed-preference ranking exercise -----------------------------------
+
+@router.get("/{req_id}/ranking")
+def ranking_page(req_id: int, request: Request, db: Session = Depends(get_db)):
+    req = _get_req(db, req_id)
+    return _tmpl(request).TemplateResponse(request, "ranking.html",
+        {"request": request, "nav": "requisitions", "page_title": f"Ranking · {req.title}",
+         "req": req, "profiles": profiles.PROFILES},
+    )
+
+
+@router.post("/{req_id}/ranking")
+def submit_ranking(req_id: int, order: str = Form(...), db: Session = Depends(get_db)):
+    """order is a comma-separated list of profile ids, top choice first."""
+    req = _get_req(db, req_id)
+    contract = req.current_contract
+    if not contract:
+        raise HTTPException(400, "No contract")
+    ranked = [profiles.PROFILE_BY_ID[pid] for pid in order.split(",") if pid in profiles.PROFILE_BY_ID]
+    conflicts = render.reconcile_ranking(contract.fields, ranked)
+
+    cfields = contract.fields
+    # Replace any prior stated_vs_revealed flags, keep other conflict types.
+    existing = [c for c in cfields.get("conflicts", []) if c.get("type") != "stated_vs_revealed"]
+    cfields["conflicts"] = existing + conflicts
+    contract.fields = cfields
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(contract, "fields")
+    db.commit()
+
+    dest = "contract" if req.status in (models.REQ_ACTIVE, models.REQ_OFFER, models.REQ_CLOSED) else ""
+    suffix = f"?tab={dest}" if dest else ""
+    return RedirectResponse(url=f"/requisitions/{req_id}{suffix}", status_code=303)
 
 
 # --- Renderings copy endpoint (raw markdown) --------------------------------

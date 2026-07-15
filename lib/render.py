@@ -229,6 +229,85 @@ def reasons_share_theme(reasons: list[str]) -> dict[str, Any]:
     return _offline_theme(reasons)
 
 
+def reconcile_ranking(cfields: dict, ranked: list[dict]) -> list[dict[str, Any]]:
+    """Compare a force-ranking of anonymized profiles against the stated
+    must-haves. Returns a list of stated-vs-revealed conflict flags.
+
+    ``ranked`` is the ordered list of profile dicts (top choice first).
+    """
+    must_haves = [m.get("text", "") for m in (_val(cfields, "must_haves") or []) if isinstance(m, dict)]
+    deal_breaker = _val(cfields, "deal_breaker") or ""
+    if llm.has_api_key():
+        try:
+            data = llm.extract_json(
+                [
+                    {
+                        "role": "system",
+                        "content": (
+                            "A hiring manager force-ranked anonymized candidate profiles. "
+                            "Compare what the ranking REVEALS they actually prioritize "
+                            "against what they STATED as must-haves. Return JSON: "
+                            '{"conflicts": [{"note": "<one sentence>"}]}. Only include a '
+                            "conflict when the ranking meaningfully diverges from the "
+                            "stated must-haves or deal-breaker (e.g. they rank a profile "
+                            "weak on a stated must-have at the top, or reveal a priority "
+                            "not written down). Empty list if they align."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            "Stated must-haves: " + "; ".join(must_haves) + "\n"
+                            "Deal-breaker: " + deal_breaker + "\n\n"
+                            "Ranking (top first):\n"
+                            + "\n".join(
+                                f"{i+1}. {p['title']} — {p['blurb']} [tags: {', '.join(p['tags'])}]"
+                                for i, p in enumerate(ranked)
+                            )
+                        ),
+                    },
+                ]
+            )
+            out = []
+            for c in data.get("conflicts", [])[:4]:
+                note = (c.get("note") if isinstance(c, dict) else str(c)) or ""
+                if note.strip():
+                    out.append({"type": "stated_vs_revealed", "field": "must_haves", "note": note.strip()})
+            return out
+        except Exception:
+            pass
+    return _offline_reconcile(must_haves, ranked)
+
+
+def _offline_reconcile(must_haves: list[str], ranked: list[dict]) -> list[dict[str, Any]]:
+    """Heuristic reconciliation: does the top pick reflect the stated must-haves?"""
+    import re
+
+    if len(ranked) < 2:
+        return []
+    top_tags = set()
+    for p in ranked[:2]:
+        top_tags.update(t.lower() for t in p["tags"])
+        top_tags.update(re.findall(r"[a-z]{4,}", p["blurb"].lower()))
+    conflicts: list[dict[str, Any]] = []
+    # A stated must-have with no echo in the top-2 profiles is a divergence.
+    for mh in must_haves:
+        words = set(re.findall(r"[a-z]{4,}", mh.lower()))
+        if words and not (words & top_tags):
+            conflicts.append({
+                "type": "stated_vs_revealed", "field": "must_haves",
+                "note": f'You ranked profiles weak on your stated must-have "{mh[:60]}" at the top — worth confirming it is truly non-negotiable.',
+            })
+    # Surface a strong revealed priority from the top pick.
+    if ranked:
+        top = ranked[0]
+        conflicts.append({
+            "type": "stated_vs_revealed", "field": "must_haves",
+            "note": f'Your top pick ({top["title"]}) signals a revealed preference for: {", ".join(top["tags"][:2])}.',
+        })
+    return conflicts[:3]
+
+
 def _offline_theme(reasons: list[str]) -> dict[str, Any]:
     """Keyword-overlap fallback: a shared non-trivial word across >=3 reasons."""
     import re

@@ -99,7 +99,10 @@
     <div class="lg:col-span-2 card p-5">
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-semibold">One-pager · v{{ contract.version }}</div>
-        <button onclick="document.getElementById('amend-modal').classList.remove('hidden')" class="text-xs text-brand-600 hover:underline">Amend</button>
+        <div class="flex items-center gap-3">
+          <a href="/requisitions/{{ req.id }}/ranking" class="text-xs text-brand-600 hover:underline">Ranking exercise</a>
+          <button onclick="document.getElementById('amend-modal').classList.remove('hidden')" class="text-xs text-brand-600 hover:underline">Amend</button>
+        </div>
       </div>
       <div class="prose-mini">{{ contract.one_pager | markdown | safe }}</div>
     </div>

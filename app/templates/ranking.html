@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl">
+  <a href="/requisitions/{{ req.id }}" class="text-sm text-gray-400 hover:text-gray-600">← {{ req.title }}</a>
+  <h1 class="text-xl font-semibold mt-1 mb-1">Revealed-preference exercise</h1>
+  <p class="text-sm text-gray-500 mb-5">
+    Drag to rank these anonymized profiles from <strong>best fit (top)</strong> to worst. On submit,
+    the agent reconciles your ranking against the contract's stated must-haves and flags any
+    <span class="text-violet-600">stated vs revealed</span> divergences.
+  </p>
+
+  <ul id="ranklist" class="space-y-2 mb-5">
+    {% for p in profiles %}
+    <li draggable="true" data-id="{{ p.id }}"
+        class="card p-3 flex items-start gap-3 cursor-grab active:cursor-grabbing">
+      <span class="rank-num w-6 h-6 rounded-full bg-brand-100 text-brand-700 grid place-items-center text-xs font-semibold flex-none mt-0.5"></span>
+      <div>
+        <div class="text-sm font-medium">{{ p.title }}</div>
+        <div class="text-sm text-gray-600">{{ p.blurb }}</div>
+        <div class="mt-1 flex flex-wrap gap-1">
+          {% for t in p.tags %}<span class="badge bg-gray-100 text-gray-500 text-[10px]">{{ t }}</span>{% endfor %}
+        </div>
+      </div>
+      <span class="ml-auto text-gray-300 flex-none">⠿</span>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="/requisitions/{{ req.id }}/ranking" onsubmit="document.getElementById('order').value = currentOrder()">
+    <input type="hidden" name="order" id="order">
+    <button class="bg-brand-600 text-white text-sm px-5 py-2.5 rounded-lg hover:bg-brand-700">Submit ranking &amp; reconcile →</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const list = document.getElementById('ranklist');
+let dragEl = null;
+function renumber(){
+  [...list.children].forEach((li, i) => li.querySelector('.rank-num').textContent = i + 1);
+}
+function currentOrder(){ return [...list.children].map(li => li.dataset.id).join(','); }
+list.addEventListener('dragstart', e => { dragEl = e.target.closest('li'); e.target.style.opacity = '0.4'; });
+list.addEventListener('dragend', e => { e.target.style.opacity = '1'; renumber(); });
+list.addEventListener('dragover', e => {
+  e.preventDefault();
+  const after = [...list.querySelectorAll('li:not([style*="0.4"])')].find(li => {
+    const box = li.getBoundingClientRect();
+    return e.clientY < box.top + box.height / 2;
+  });
+  if(!dragEl) return;
+  if(after) list.insertBefore(dragEl, after); else list.appendChild(dragEl);
+});
+renumber();
+</script>
+{% endblock %}

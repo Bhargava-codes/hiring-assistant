@@ -3,7 +3,10 @@
 {% include "_req_header.html" %}
 
 <div class="mb-4 flex items-center justify-between">
-  <div class="text-sm text-gray-500">Review the Role Contract before it renders any downstream artifact.</div>
+  <div class="text-sm text-gray-500">
+    Review the Role Contract before it renders any downstream artifact.
+    <a href="/requisitions/{{ req.id }}/ranking" class="text-brand-600 hover:underline ml-1">Run revealed-preference exercise →</a>
+  </div>
   {% if can_render %}
   <form method="post" action="/requisitions/{{ req.id }}/contract/approve">
     <button class="bg-green-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-green-700">Approve &amp; generate renderings →</button>
