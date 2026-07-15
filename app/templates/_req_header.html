@@ -1,0 +1,13 @@
+<div class="flex items-start justify-between mb-5">
+  <div>
+    <a href="/requisitions" class="text-sm text-gray-400 hover:text-gray-600">← Requisitions</a>
+    <h1 class="text-xl font-semibold mt-1">{{ req.title }}</h1>
+    <p class="text-sm text-gray-500">
+      {{ req.department }} · Hiring manager: {{ req.hiring_manager.name }}
+      {% if contract %} · Contract v{{ contract.version }}{% endif %}
+    </p>
+  </div>
+  <span class="badge {{ status_style.get(req.status, 'bg-gray-100 text-gray-600') }} text-xs">
+    {{ req.status.replace('_',' ')|title }}
+  </span>
+</div>

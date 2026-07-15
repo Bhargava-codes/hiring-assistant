@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold">Requisitions</h1>
+    <p class="text-sm text-gray-500">Role Contracts and open searches</p>
+  </div>
+  <a href="/requisitions/new" class="bg-brand-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-brand-700">+ New requisition</a>
+</div>
+
+<div class="card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+      <tr>
+        <th class="text-left px-4 py-2.5">Title</th>
+        <th class="text-left px-4 py-2.5">Department</th>
+        <th class="text-left px-4 py-2.5">Hiring manager</th>
+        <th class="text-left px-4 py-2.5">Status</th>
+        <th class="text-left px-4 py-2.5">Contract</th>
+        <th class="text-left px-4 py-2.5">Candidates</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in reqs %}
+      <tr class="border-t border-gray-100 hover:bg-brand-50/40 cursor-pointer" onclick="location.href='/requisitions/{{ r.id }}'">
+        <td class="px-4 py-2.5 font-medium">{{ r.title }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ r.department }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ r.hiring_manager.name }}</td>
+        <td class="px-4 py-2.5"><span class="badge {{ status_style.get(r.status, 'bg-gray-100 text-gray-600') }}">{{ r.status.replace('_',' ')|title }}</span></td>
+        <td class="px-4 py-2.5 text-gray-500">{{ 'v' ~ r.current_contract.version if r.current_contract else '—' }}</td>
+        <td class="px-4 py-2.5 text-gray-500">{{ r.candidates|length }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not reqs %}<div class="p-6 text-center text-sm text-gray-400">No requisitions yet.</div>{% endif %}
+</div>
+{% endblock %}

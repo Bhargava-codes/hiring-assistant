@@ -1,0 +1,86 @@
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: { 50: '#eef4ff', 100: '#dce7ff', 500: '#3b5bdb', 600: '#364fc7', 700: '#2f45ab' },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { background: #f6f7f9; }
+  .nav-link { display:flex; align-items:center; gap:.625rem; padding:.5rem .75rem; border-radius:.5rem; font-size:.875rem; color:#4b5563; }
+  .nav-link:hover { background:#eef1f5; color:#111827; }
+  .nav-link.active { background:#e7ecfb; color:#2f45ab; font-weight:600; }
+  .nav-link svg { width:1.05rem; height:1.05rem; flex:none; }
+  .card { background:#fff; border:1px solid #eceef1; border-radius:.75rem; }
+  .badge { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.7rem; font-weight:600; }
+  .prose-mini h1{font-size:1.35rem;font-weight:700;margin:.4rem 0 .5rem;}
+  .prose-mini h2{font-size:1.05rem;font-weight:700;margin:1rem 0 .35rem;color:#1f2937;}
+  .prose-mini h3{font-size:.95rem;font-weight:600;margin:.75rem 0 .25rem;}
+  .prose-mini p{margin:.4rem 0;color:#374151;font-size:.9rem;line-height:1.5;}
+  .prose-mini ul,.prose-mini ol{margin:.4rem 0 .4rem 1.1rem;font-size:.9rem;color:#374151;}
+  .prose-mini li{margin:.2rem 0;}
+  .prose-mini table{border-collapse:collapse;margin:.6rem 0;font-size:.85rem;width:100%;}
+  .prose-mini th,.prose-mini td{border:1px solid #e5e7eb;padding:.35rem .5rem;text-align:left;}
+  .prose-mini code{background:#f3f4f6;padding:.05rem .3rem;border-radius:.25rem;font-size:.85em;}
+  .prose-mini em{color:#6b7280;}
+</style>
+
+<div class="min-h-screen flex text-gray-900">
+  <!-- Sidebar -->
+  <aside class="w-60 flex-none bg-white border-r border-gray-200 flex flex-col">
+    <div class="h-14 flex items-center gap-2 px-4 border-b border-gray-100">
+      <div class="w-7 h-7 rounded-lg bg-brand-600 text-white grid place-items-center font-bold text-sm">C</div>
+      <div class="leading-tight">
+        <div class="font-semibold text-sm">Contract HRMS</div>
+        <div class="text-[11px] text-gray-400">{{ org_name }}</div>
+      </div>
+    </div>
+    <nav class="flex-1 p-2 space-y-0.5">
+      {% set nav = nav|default('') %}
+      <a href="/dashboard" class="nav-link {{ 'active' if nav=='dashboard' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Dashboard</a>
+      <a href="/employees" class="nav-link {{ 'active' if nav=='employees' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87"/></svg>Employees</a>
+      <a href="/requisitions" class="nav-link {{ 'active' if nav=='requisitions' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Requisitions</a>
+      <div class="pt-3 pb-1 px-3 text-[10px] uppercase tracking-wide text-gray-400">Preview modules</div>
+      <a href="/performance" class="nav-link {{ 'active' if nav=='performance' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l3-3 4 4 5-6"/></svg>Performance</a>
+      <a href="/payroll" class="nav-link {{ 'active' if nav=='payroll' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payroll</a>
+      <a href="/leave" class="nav-link {{ 'active' if nav=='leave' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>Leave</a>
+      <a href="/settings" class="nav-link {{ 'active' if nav=='settings' }}">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 006 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15H4.5a2 2 0 110-4h.09A1.65 1.65 0 006 9.4"/></svg>Settings</a>
+    </nav>
+    <div class="p-3 border-t border-gray-100 text-[11px] text-gray-400">
+      Intake: <span class="font-mono">{{ intake_model }}</span><br>
+      Extract: <span class="font-mono">{{ extract_model }}</span><br>
+      {% if llm_online() %}
+        <span class="text-green-600">● LLM online</span>
+      {% else %}
+        <span class="text-amber-600">● Offline mode (no API key)</span>
+      {% endif %}
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <header class="h-14 flex-none bg-white border-b border-gray-200 flex items-center justify-between px-6">
+      <div class="text-sm text-gray-500">{% block breadcrumb %}{{ page_title|default('') }}{% endblock %}</div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-600">{{ current_user }}</span>
+        <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 grid place-items-center text-xs font-semibold">HA</div>
+      </div>
+    </header>
+    <main class="flex-1 overflow-auto p-6">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% block scripts %}{% endblock %}

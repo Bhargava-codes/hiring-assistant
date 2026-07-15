@@ -1,0 +1,38 @@
+<div class="p-5">
+  <div class="flex items-start justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-full bg-brand-100 text-brand-700 grid place-items-center font-semibold">
+        {{ emp.name.split()|map('first')|join('')|upper }}
+      </div>
+      <div>
+        <div class="font-semibold">{{ emp.name }}</div>
+        <div class="text-xs text-gray-500">{{ emp.designation }}</div>
+      </div>
+    </div>
+    <button onclick="closeDrawer()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+  </div>
+
+  <dl class="mt-5 space-y-3 text-sm">
+    {% set rows = [('Employee ID', emp.employee_code), ('Department', emp.department),
+                   ('Location', emp.location), ('CTC band', emp.ctc_band),
+                   ('Manager', emp.manager.name if emp.manager else '—'),
+                   ('Join date', emp.join_date.strftime('%d %b %Y'))] %}
+    {% for label, val in rows %}
+    <div class="flex justify-between border-b border-gray-100 pb-2">
+      <dt class="text-gray-400">{{ label }}</dt>
+      <dd class="font-medium text-gray-800">{{ val }}</dd>
+    </div>
+    {% endfor %}
+  </dl>
+
+  {% if reports %}
+  <div class="mt-5">
+    <div class="text-xs uppercase tracking-wide text-gray-400 mb-2">Direct reports ({{ reports|length }})</div>
+    <ul class="space-y-1.5">
+      {% for r in reports %}
+      <li class="text-sm text-gray-700">{{ r.name }} <span class="text-gray-400">· {{ r.designation }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>

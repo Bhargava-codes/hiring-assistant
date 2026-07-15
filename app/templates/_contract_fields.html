@@ -1,0 +1,56 @@
+{# Structured field list with provenance tags. Expects: contract, layers, field_labels, critical #}
+{% macro provbadge(p) %}
+  {% if p == 'stated' %}<span class="badge bg-brand-100 text-brand-700 text-[10px]">stated</span>
+  {% elif p == 'revealed' %}<span class="badge bg-violet-100 text-violet-700 text-[10px]">revealed</span>
+  {% else %}<span class="badge bg-gray-100 text-gray-400 text-[10px]">—</span>{% endif %}
+{% endmacro %}
+
+{% set F = contract.fields.get('fields', {}) %}
+<div class="space-y-4">
+  {% for layer in layers %}
+  <div>
+    <div class="text-[11px] uppercase tracking-wide text-gray-400 mb-1.5">Layer {{ layer.id }} · {{ layer.name }}</div>
+    <div class="space-y-1.5">
+      {% for name in layer.fields %}
+      {% set f = F.get(name, {}) %}
+      <div class="rounded-lg border border-gray-100 px-3 py-2 {{ '' if f.get('value') else 'opacity-70' }}">
+        <div class="flex items-center gap-2 mb-0.5">
+          <span class="text-xs font-medium text-gray-600">{{ field_labels.get(name, name) }}</span>
+          {% if name in critical %}<span class="text-[9px] uppercase tracking-wide text-amber-600">critical</span>{% endif %}
+          <span class="ml-auto">{{ provbadge(f.get('provenance','null')) }}</span>
+        </div>
+        {% set v = f.get('value') %}
+        {% if v is none or v == '' %}
+          <span class="text-xs text-gray-300 italic">not captured</span>
+        {% elif v is iterable and v is not string %}
+          <ul class="list-disc ml-4 text-sm text-gray-700 space-y-0.5">
+            {% for item in v %}
+              {% if item is mapping and 'text' in item %}
+                <li>{{ item.text }}{% if item.verification %} <span class="text-gray-400">— verify: {{ item.verification }}</span>{% endif %}</li>
+              {% elif item is mapping and 'round' in item %}
+                <li>{{ item.round }}{% if item.tests %}: {{ item.tests }}{% endif %}</li>
+              {% else %}<li>{{ item }}</li>{% endif %}
+            {% endfor %}
+          </ul>
+        {% else %}
+          <span class="text-sm text-gray-700">{{ v }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if contract.fields.get('conflicts') %}
+<div class="mt-4">
+  <div class="text-[11px] uppercase tracking-wide text-gray-400 mb-1.5">Flags</div>
+  <div class="space-y-1.5">
+    {% for c in contract.fields.get('conflicts') %}
+    <div class="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+      <span class="font-semibold">{{ c.type|replace('_',' ')|title }}</span>{% if c.field %} · {{ field_labels.get(c.field, c.field) }}{% endif %} — {{ c.note }}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}

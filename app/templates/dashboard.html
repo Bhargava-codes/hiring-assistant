@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-1">Dashboard</h1>
+<p class="text-sm text-gray-500 mb-5">Company overview · {{ org_name }}</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  {% for c in cards %}
+  <div class="card p-4">
+    <div class="text-xs text-gray-400 uppercase tracking-wide">{{ c.label }}</div>
+    <div class="text-2xl font-semibold mt-1">{{ c.value }}</div>
+    <div class="text-xs text-gray-400 mt-1">{{ c.hint }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="card p-5 max-w-3xl">
+  <div class="text-sm font-semibold mb-4">Headcount by department</div>
+  <div class="space-y-2.5">
+    {% for b in dept_bars %}
+    <div class="flex items-center gap-3">
+      <div class="w-24 text-xs text-gray-500 text-right">{{ b.name }}</div>
+      <div class="flex-1 bg-gray-100 rounded h-5 overflow-hidden">
+        <div class="bg-brand-500 h-5 rounded" style="width: {{ b.pct }}%"></div>
+      </div>
+      <div class="w-8 text-xs text-gray-600">{{ b.count }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

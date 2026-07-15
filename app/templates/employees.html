@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-1">Employees</h1>
+<p class="text-sm text-gray-500 mb-5">{{ employees|length }} of {{ org_name }}'s team</p>
+
+<form method="get" class="flex flex-wrap gap-3 mb-4">
+  <input name="q" value="{{ q }}" placeholder="Search name or ID…"
+         class="border border-gray-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-brand-100">
+  <select name="dept" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+    <option value="">All departments</option>
+    {% for d in departments %}
+    <option value="{{ d }}" {{ 'selected' if d==dept }}>{{ d }}</option>
+    {% endfor %}
+  </select>
+  <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-brand-700">Filter</button>
+  {% if q or dept %}<a href="/employees" class="text-sm text-gray-500 px-3 py-2">Clear</a>{% endif %}
+</form>
+
+<div class="card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+      <tr>
+        <th class="text-left px-4 py-2.5">Name</th>
+        <th class="text-left px-4 py-2.5">ID</th>
+        <th class="text-left px-4 py-2.5">Department</th>
+        <th class="text-left px-4 py-2.5">Designation</th>
+        <th class="text-left px-4 py-2.5">Manager</th>
+        <th class="text-left px-4 py-2.5">Location</th>
+        <th class="text-left px-4 py-2.5">CTC band</th>
+        <th class="text-left px-4 py-2.5">Joined</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr class="border-t border-gray-100 hover:bg-brand-50/40 cursor-pointer" onclick="openDrawer({{ e.id }})">
+        <td class="px-4 py-2.5 font-medium">{{ e.name }}</td>
+        <td class="px-4 py-2.5 text-gray-500 font-mono text-xs">{{ e.employee_code }}</td>
+        <td class="px-4 py-2.5">{{ e.department }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ e.designation }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ e.manager.name if e.manager else '—' }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ e.location }}</td>
+        <td class="px-4 py-2.5"><span class="badge bg-gray-100 text-gray-600">{{ e.ctc_band }}</span></td>
+        <td class="px-4 py-2.5 text-gray-500">{{ e.join_date.strftime('%b %Y') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not employees %}<div class="p-6 text-center text-sm text-gray-400">No employees match.</div>{% endif %}
+</div>
+
+<div id="drawer-backdrop" class="hidden fixed inset-0 bg-black/30 z-40" onclick="closeDrawer()"></div>
+<div id="drawer" class="hidden fixed right-0 top-0 h-full w-96 bg-white shadow-xl z-50 overflow-auto"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function openDrawer(id) {
+    const res = await fetch(`/employees/${id}/drawer`);
+    document.getElementById('drawer').innerHTML = await res.text();
+    document.getElementById('drawer').classList.remove('hidden');
+    document.getElementById('drawer-backdrop').classList.remove('hidden');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.add('hidden');
+    document.getElementById('drawer-backdrop').classList.add('hidden');
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "_req_header.html" %}
+
+{% set stage_style = {'APPLIED':'bg-gray-100 text-gray-600','SCREENED':'bg-blue-100 text-blue-700','INTERVIEW':'bg-violet-100 text-violet-700','OFFER':'bg-green-100 text-green-700','REJECTED':'bg-red-100 text-red-700'} %}
+
+<!-- Tabs -->
+<div class="flex gap-1 border-b border-gray-200 mb-5">
+  {% for t, label in [('candidates','Candidates'),('contract','Contract'),('renderings','Renderings')] %}
+  <a href="/requisitions/{{ req.id }}?tab={{ t }}"
+     class="px-4 py-2 text-sm border-b-2 -mb-px {{ 'border-brand-600 text-brand-700 font-medium' if tab==t else 'border-transparent text-gray-500 hover:text-gray-800' }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if tab == 'candidates' %}
+  <!-- Drift alert -->
+  {% if drift.active %}
+  <div class="mb-4 card border-amber-300 bg-amber-50 p-4">
+    <div class="flex items-start gap-3">
+      <div class="text-lg">⚠️</div>
+      <div class="flex-1">
+        <div class="text-sm font-semibold text-amber-900">You've rejected 3 candidates for a reason not in the contract.</div>
+        <div class="text-sm text-amber-800 mt-0.5">Shared theme: <span class="font-medium">"{{ drift.theme }}"</span>. Amend the contract first, or dismiss.</div>
+        <div class="mt-3 flex items-center gap-2">
+          <button onclick="document.getElementById('amend-modal').classList.remove('hidden')"
+                  class="bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-amber-700">Amend contract</button>
+          <form method="post" action="/requisitions/{{ req.id }}/drift/dismiss">
+            <button class="text-xs text-amber-700 px-3 py-1.5">Dismiss</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Slot burn-down -->
+  <div class="mb-5 card p-4 max-w-2xl">
+    <div class="flex items-center justify-between mb-2">
+      <div class="text-sm font-semibold">Interview slot burn-down</div>
+      <div class="text-xs text-gray-500">{{ burndown.used }} / {{ burndown.budget or '—' }} slots used</div>
+    </div>
+    <div class="h-2.5 bg-gray-100 rounded overflow-hidden">
+      <div class="h-2.5 {{ 'bg-red-500' if burndown.over or burndown.warning else 'bg-brand-500' }}" style="width: {{ burndown.pct }}%"></div>
+    </div>
+    {% if burndown.warning %}
+    <div class="mt-3 text-xs bg-red-50 border border-red-200 text-red-800 rounded-lg px-3 py-2">
+      <div class="font-semibold mb-0.5">Budget projection</div>
+      {{ burndown.warning }}
+      {% if burndown.math %}<div class="text-red-500 mt-1 font-mono text-[11px]">{{ burndown.math }}</div>{% endif %}
+    </div>
+    {% elif burndown.has_offer %}
+    <div class="mt-2 text-xs text-green-600">An offer is out — within budget.</div>
+    {% endif %}
+  </div>
+
+  <!-- Candidate table -->
+  <div class="card overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+        <tr>
+          <th class="text-left px-4 py-2.5">Candidate</th>
+          <th class="text-left px-4 py-2.5">Source</th>
+          <th class="text-left px-4 py-2.5">Stage</th>
+          <th class="text-left px-4 py-2.5">Slot</th>
+          <th class="text-left px-4 py-2.5">Last decision</th>
+          <th class="text-right px-4 py-2.5">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in req.candidates %}
+        <tr class="border-t border-gray-100">
+          <td class="px-4 py-2.5 font-medium">{{ c.name }}</td>
+          <td class="px-4 py-2.5 text-gray-500">{{ c.source }}</td>
+          <td class="px-4 py-2.5"><span class="badge {{ stage_style.get(c.stage,'bg-gray-100') }}">{{ c.stage|title }}</span></td>
+          <td class="px-4 py-2.5">{{ '●' if c.slot_used else '○' }}</td>
+          <td class="px-4 py-2.5 text-xs text-gray-500">
+            {% set d = c.decisions[-1] if c.decisions else None %}
+            {% if d and d.verdict == 'reject' %}
+              {% if d.criterion_id %}Rejected · {{ d.criterion_id.replace('_',' ') }}{% else %}Rejected · <span class="text-red-600">uncontracted</span>{% endif %}
+            {% elif d %}Advanced{% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-2.5 text-right">
+            {% if c.stage not in ['REJECTED','OFFER'] %}
+            <form method="post" action="/requisitions/{{ req.id }}/candidates/{{ c.id }}/advance" class="inline">
+              <button class="text-xs bg-green-50 text-green-700 border border-green-200 px-2.5 py-1 rounded hover:bg-green-100">Advance</button>
+            </form>
+            <button onclick="openReject({{ c.id }}, '{{ c.name|e }}')" class="text-xs bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded hover:bg-red-100">Reject</button>
+            {% else %}<span class="text-xs text-gray-300">—</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if not req.candidates %}<div class="p-6 text-center text-sm text-gray-400">No candidates yet.</div>{% endif %}
+  </div>
+
+{% elif tab == 'contract' %}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <div class="lg:col-span-2 card p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold">One-pager · v{{ contract.version }}</div>
+        <button onclick="document.getElementById('amend-modal').classList.remove('hidden')" class="text-xs text-brand-600 hover:underline">Amend</button>
+      </div>
+      <div class="prose-mini">{{ contract.one_pager | markdown | safe }}</div>
+    </div>
+    <div class="space-y-5">
+      <div class="card p-5">
+        <div class="text-sm font-semibold mb-3">Fields &amp; provenance</div>
+        {% include "_contract_fields.html" %}
+      </div>
+      <div class="card p-4">
+        <div class="text-sm font-semibold mb-2">Version history</div>
+        <ul class="space-y-1.5 text-sm">
+          {% for cv in all_contracts %}
+          <li class="flex items-center justify-between {{ 'font-medium' if cv.version==contract.version }}">
+            <span>v{{ cv.version }} {{ '· current' if cv.version==contract.version else '' }}</span>
+            <span class="text-xs text-gray-400">{{ cv.created_at.strftime('%d %b') }}</span>
+          </li>
+          {% if cv.fields.get('conflicts') %}
+            {% for cf in cv.fields.get('conflicts') %}
+              {% if cf.type == 'amendment' %}
+              <li class="text-xs text-gray-500 ml-3 border-l-2 border-amber-200 pl-2">amended: {{ cf.note }}</li>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+{% elif tab == 'renderings' %}
+  {% if renderings %}
+  <div class="flex gap-1 mb-4">
+    {% for rt in rendering_types %}
+    <button onclick="showRendering('{{ rt }}')" data-rtab="{{ rt }}"
+      class="rtab text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50">{{ rendering_labels[rt] }}</button>
+    {% endfor %}
+  </div>
+  {% for rt in rendering_types %}
+  {% set r = renderings.get(rt) %}
+  <div class="rpanel card p-5 hidden" data-rpanel="{{ rt }}">
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm font-semibold">{{ rendering_labels[rt] }}</div>
+      <button onclick="copyRendering('{{ rt }}')" class="text-xs text-brand-600 hover:underline">Copy markdown</button>
+    </div>
+    <div class="prose-mini">{{ (r.content if r else '') | markdown | safe }}</div>
+    <textarea class="hidden" data-raw="{{ rt }}">{{ r.content if r else '' }}</textarea>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="card p-6 text-center text-sm text-gray-400">No renderings yet — approve the contract to generate them.</div>
+  {% endif %}
+{% endif %}
+
+<!-- Reject modal -->
+<div id="reject-modal" class="hidden fixed inset-0 bg-black/30 z-50 grid place-items-center" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+    <div class="text-sm font-semibold mb-1">Reject <span id="reject-name"></span></div>
+    <p class="text-xs text-gray-500 mb-4">Every rejection must cite a contract criterion, or record an uncontracted reason.</p>
+    <form id="reject-form" method="post">
+      <label class="block text-xs font-medium mb-1">Cite a contract criterion</label>
+      <select name="criterion_id" id="reject-criterion" onchange="if(this.value)document.getElementById('reject-reason').value=''"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white mb-3">
+        <option value="">— none —</option>
+        {% for cr in criteria %}<option value="{{ cr.id }}">{{ cr.label }}</option>{% endfor %}
+      </select>
+      <div class="text-center text-xs text-gray-400 mb-3">or</div>
+      <label class="block text-xs font-medium mb-1">Uncontracted reason</label>
+      <textarea name="uncontracted_reason" id="reject-reason" rows="2" oninput="if(this.value)document.getElementById('reject-criterion').value=''"
+                placeholder="A reason not written into the contract…"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4"></textarea>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="document.getElementById('reject-modal').classList.add('hidden')" class="text-sm text-gray-500 px-3 py-2">Cancel</button>
+        <button class="bg-red-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-700">Reject</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Amend modal -->
+<div id="amend-modal" class="hidden fixed inset-0 bg-black/30 z-50 grid place-items-center" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-5">
+    <div class="text-sm font-semibold mb-1">Amend the contract</div>
+    <p class="text-xs text-gray-500 mb-4">Describe the new requirement in a sentence. This creates contract v{{ contract.version + 1 }} and regenerates all four renderings.</p>
+    <form method="post" action="/requisitions/{{ req.id }}/amend">
+      <textarea name="amendment" rows="3" required
+        placeholder="e.g. We actually need someone with hands-on Kubernetes experience — make it a must-have."
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4"></textarea>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="document.getElementById('amend-modal').classList.add('hidden')" class="text-sm text-gray-500 px-3 py-2">Cancel</button>
+        <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-brand-700">Create v{{ contract.version + 1 }} →</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const REQ_ID = {{ req.id }};
+function openReject(cid, name){
+  const f = document.getElementById('reject-form');
+  f.action = `/requisitions/${REQ_ID}/candidates/${cid}/reject`;
+  document.getElementById('reject-name').textContent = name;
+  document.getElementById('reject-criterion').value = '';
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').classList.remove('hidden');
+}
+document.getElementById('reject-form')?.addEventListener('submit', e => {
+  const crit = document.getElementById('reject-criterion').value;
+  const reason = document.getElementById('reject-reason').value.trim();
+  if(!crit && !reason){ e.preventDefault(); alert('Cite a criterion or record an uncontracted reason.'); }
+});
+function showRendering(rt){
+  document.querySelectorAll('.rpanel').forEach(p => p.classList.toggle('hidden', p.dataset.rpanel !== rt));
+  document.querySelectorAll('.rtab').forEach(b => b.classList.toggle('bg-brand-50', b.dataset.rtab === rt));
+  document.querySelectorAll('.rtab').forEach(b => b.classList.toggle('border-brand-300', b.dataset.rtab === rt));
+}
+function copyRendering(rt){
+  const raw = document.querySelector(`[data-raw="${rt}"]`).value;
+  navigator.clipboard.writeText(raw).then(() => {
+    const btn = event.target; const t = btn.textContent; btn.textContent = 'Copied ✓';
+    setTimeout(() => btn.textContent = t, 1200);
+  });
+}
+// Auto-open first rendering tab.
+document.addEventListener('DOMContentLoaded', () => {
+  const first = document.querySelector('.rtab');
+  if(first) showRendering(first.dataset.rtab);
+});
+</script>
+{% endblock %}

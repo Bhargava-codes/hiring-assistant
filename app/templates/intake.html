@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-start justify-between mb-4">
+  <div>
+    <a href="/requisitions" class="text-sm text-gray-400 hover:text-gray-600">← Requisitions</a>
+    <h1 class="text-xl font-semibold mt-1">Intake · {{ req.title }}</h1>
+    <p class="text-sm text-gray-500">{{ req.department }} · {{ req.hiring_manager.name }} · Discovery agent</p>
+  </div>
+  {% if not llm_online() %}
+  <span class="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-1.5">Offline mode — heuristic extraction</span>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5" style="height: calc(100vh - 190px)">
+  <!-- Chat -->
+  <div class="card flex flex-col overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-gray-100 text-sm font-semibold flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-green-500"></span> Discovery agent
+    </div>
+    <div id="messages" class="flex-1 overflow-auto p-4 space-y-3"></div>
+    <div id="typing" class="px-4 pb-2 text-xs text-gray-400 hidden">Agent is typing…</div>
+    <form id="chat-form" class="border-t border-gray-100 p-3 flex gap-2">
+      <textarea id="chat-input" rows="2" placeholder="Type the hiring manager's answer…"
+        class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-100"></textarea>
+      <button id="send-btn" class="bg-brand-600 text-white text-sm px-4 rounded-lg hover:bg-brand-700 self-stretch">Send</button>
+    </form>
+  </div>
+
+  <!-- Live contract panel -->
+  <div class="card flex flex-col overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+      <div class="text-sm font-semibold">Role Contract · live</div>
+      <div id="critical-pill" class="text-xs"></div>
+    </div>
+    <div id="progress" class="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2"></div>
+    <div id="fields" class="flex-1 overflow-auto p-4 space-y-4"></div>
+    <div id="done-banner" class="hidden border-t border-gray-100 p-3 bg-green-50">
+      <div class="text-sm text-green-800 mb-2">✓ Contract drafted from the conversation.</div>
+      <a id="review-link" href="#" class="inline-block bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700">Review &amp; approve →</a>
+    </div>
+  </div>
+</div>
+
+<template id="tpl-empty">
+  <p class="text-sm text-gray-400 text-center mt-10">Send the first answer to begin capturing the contract.</p>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const REQ_ID = {{ req.id }};
+const LAYERS = {{ layers|tojson }};
+const messagesEl = document.getElementById('messages');
+const fieldsEl = document.getElementById('fields');
+const progressEl = document.getElementById('progress');
+const form = document.getElementById('chat-form');
+const input = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const typing = document.getElementById('typing');
+
+const PROV = {
+  stated:   {label: 'stated',   cls: 'bg-brand-100 text-brand-700'},
+  revealed: {label: 'revealed', cls: 'bg-violet-100 text-violet-700'},
+  null:     {label: '—',        cls: 'bg-gray-100 text-gray-400'},
+};
+
+function esc(s){ return (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function renderMessages(msgs){
+  messagesEl.innerHTML = '';
+  for(const m of msgs){
+    const mine = m.role === 'user';
+    const wrap = document.createElement('div');
+    wrap.className = 'flex ' + (mine ? 'justify-end' : 'justify-start');
+    wrap.innerHTML = `<div class="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${mine
+      ? 'bg-brand-600 text-white rounded-br-sm'
+      : 'bg-gray-100 text-gray-800 rounded-bl-sm'}">${esc(m.content)}</div>`;
+    messagesEl.appendChild(wrap);
+  }
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function fmtValue(f){
+  const v = f.value;
+  if(v === null || v === undefined || v === '') return '<span class="text-gray-300 text-sm italic">not captured</span>';
+  if(Array.isArray(v)){
+    return '<ul class="list-disc ml-4 text-sm text-gray-700 space-y-0.5">' + v.map(item => {
+      if(item && typeof item === 'object'){
+        if('text' in item) return `<li>${esc(item.text)}${item.verification ? ` <span class="text-gray-400">— verify: ${esc(item.verification)}</span>` : ''}</li>`;
+        if('round' in item) return `<li>${esc(item.round)}${item.tests ? `: ${esc(item.tests)}` : ''}</li>`;
+      }
+      return `<li>${esc(String(item))}</li>`;
+    }).join('') + '</ul>';
+  }
+  return `<span class="text-sm text-gray-700">${esc(String(v))}</span>`;
+}
+
+function renderContract(c, touched){
+  touched = touched || [];
+  // Progress chips per layer.
+  progressEl.innerHTML = c.progress.map(p => {
+    const pct = Math.round(100 * p.filled / p.total);
+    const done = p.complete;
+    return `<div class="text-center">
+      <div class="text-[10px] text-gray-400 mb-1 truncate" title="${esc(p.name)}">L${p.id} ${esc(p.name.split(' ')[0])}</div>
+      <div class="h-1.5 bg-gray-100 rounded overflow-hidden"><div class="h-1.5 ${done?'bg-green-500':'bg-brand-500'}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // Critical pill.
+  const pill = document.getElementById('critical-pill');
+  if(c.can_render){ pill.innerHTML = '<span class="badge bg-green-100 text-green-700">All critical fields ✓</span>'; }
+  else { pill.innerHTML = `<span class="badge bg-amber-100 text-amber-700">${c.missing_critical.length} critical open</span>`; }
+
+  // Fields grouped by layer.
+  fieldsEl.innerHTML = '';
+  for(const layer of LAYERS){
+    const section = document.createElement('div');
+    let rows = '';
+    for(const name of layer.fields){
+      const f = c.fields[name];
+      if(!f) continue;
+      const prov = PROV[f.provenance] || PROV.null;
+      const hl = touched.includes(name) ? 'ring-2 ring-brand-300 bg-brand-50/60' : '';
+      rows += `<div data-field="${name}" class="rounded-lg px-3 py-2 transition ${hl} ${f.filled?'':'opacity-70'}">
+        <div class="flex items-center gap-2 mb-0.5">
+          <span class="text-xs font-medium text-gray-600">${esc(f.label)}</span>
+          ${f.critical ? '<span class="text-[9px] uppercase tracking-wide text-amber-600">critical</span>' : ''}
+          <span class="badge ${prov.cls} ml-auto text-[10px]">${prov.label}</span>
+        </div>
+        <div>${fmtValue(f)}</div>
+      </div>`;
+    }
+    section.innerHTML = `<div class="text-[11px] uppercase tracking-wide text-gray-400 mb-1 mt-1">Layer ${layer.id} · ${esc(layer.name)}</div>
+      <div class="space-y-1.5">${rows}</div>`;
+    fieldsEl.appendChild(section);
+  }
+
+  // Fade the touched highlight after a moment.
+  if(touched.length){
+    setTimeout(() => {
+      touched.forEach(n => {
+        const el = fieldsEl.querySelector(`[data-field="${n}"]`);
+        if(el) el.className = el.className.replace('ring-2 ring-brand-300 bg-brand-50/60','');
+      });
+    }, 1600);
+  }
+}
+
+async function loadState(){
+  const res = await fetch(`/requisitions/${REQ_ID}/intake/state`);
+  const data = await res.json();
+  renderMessages(data.messages);
+  renderContract(data.contract, []);
+  if(data.done) showDone();
+}
+
+function showDone(){
+  document.getElementById('done-banner').classList.remove('hidden');
+  document.getElementById('review-link').href = `/requisitions/${REQ_ID}`;
+  input.disabled = true; sendBtn.disabled = true;
+  sendBtn.classList.add('opacity-50');
+}
+
+async function send(text){
+  input.value = ''; input.disabled = true; sendBtn.disabled = true;
+  // Optimistically show the user's message.
+  const cur = [...messagesEl.querySelectorAll('div>div')];
+  renderMessages(gatherMessages().concat([{role:'user', content:text}]));
+  typing.classList.remove('hidden');
+  try{
+    const res = await fetch(`/requisitions/${REQ_ID}/intake/message`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:text})
+    });
+    const data = await res.json();
+    typing.classList.add('hidden');
+    if(data.error){ alert(data.error); }
+    // Re-pull the authoritative transcript.
+    await refreshMessagesAndContract(data);
+    if(data.done){ showDone(); }
+  }catch(e){
+    typing.classList.add('hidden');
+    alert('Something went wrong. Check the server logs.');
+  }finally{
+    if(!document.getElementById('done-banner').classList.contains('hidden')) return;
+    input.disabled = false; sendBtn.disabled = false; input.focus();
+  }
+}
+
+let LAST_MESSAGES = [];
+function gatherMessages(){ return LAST_MESSAGES; }
+
+async function refreshMessagesAndContract(data){
+  const res = await fetch(`/requisitions/${REQ_ID}/intake/state`);
+  const state = await res.json();
+  LAST_MESSAGES = state.messages;
+  renderMessages(state.messages);
+  renderContract(data.contract || state.contract, data.touched || []);
+}
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if(text) send(text);
+});
+input.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); form.requestSubmit(); }
+});
+
+(async () => {
+  const res = await fetch(`/requisitions/${REQ_ID}/intake/state`);
+  const data = await res.json();
+  LAST_MESSAGES = data.messages;
+  renderMessages(data.messages);
+  renderContract(data.contract, []);
+  if(data.done) showDone();
+  input.focus();
+})();
+</script>
+{% endblock %}

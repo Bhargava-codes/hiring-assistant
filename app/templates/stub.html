@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-1">
+  <h1 class="text-xl font-semibold">{{ heading }}</h1>
+</div>
+<div class="mb-5 inline-flex items-center gap-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-1.5">
+  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Module preview — read-only, illustrative data
+</div>
+
+{% if kind == 'settings' %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+  {% for c in [('Organization', 'Traqo Technologies'), ('Timezone', 'Asia/Kolkata (IST)'),
+               ('Payroll cycle', 'Monthly · last working day'), ('Leave policy', '18 EL / 12 SL / 6 CL'),
+               ('SSO', 'Google Workspace'), ('Data region', 'ap-south-1')] %}
+  <div class="card p-4">
+    <div class="text-xs text-gray-400 uppercase tracking-wide">{{ c[0] }}</div>
+    <div class="text-sm font-medium mt-1">{{ c[1] }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card overflow-hidden max-w-4xl">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+      <tr>
+        <th class="text-left px-4 py-2.5">Employee</th>
+        <th class="text-left px-4 py-2.5">Department</th>
+        {% if kind == 'performance' %}<th class="text-left px-4 py-2.5">Cycle</th><th class="text-left px-4 py-2.5">Goal %</th><th class="text-left px-4 py-2.5">Rating</th>{% endif %}
+        {% if kind == 'payroll' %}<th class="text-left px-4 py-2.5">Cycle</th><th class="text-left px-4 py-2.5">Gross</th><th class="text-left px-4 py-2.5">Status</th>{% endif %}
+        {% if kind == 'leave' %}<th class="text-left px-4 py-2.5">Type</th><th class="text-left px-4 py-2.5">Balance</th><th class="text-left px-4 py-2.5">Pending</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="border-t border-gray-100">
+        <td class="px-4 py-2.5 font-medium">{{ r.emp.name }}</td>
+        <td class="px-4 py-2.5 text-gray-600">{{ r.emp.department }}</td>
+        {% if kind == 'performance' %}<td class="px-4 py-2.5 text-gray-500">{{ r.cycle }}</td><td class="px-4 py-2.5">{{ r.goal_pct }}%</td><td class="px-4 py-2.5"><span class="badge bg-gray-100 text-gray-600">{{ r.rating }}</span></td>{% endif %}
+        {% if kind == 'payroll' %}<td class="px-4 py-2.5 text-gray-500">{{ r.cycle }}</td><td class="px-4 py-2.5">{{ r.gross }}</td><td class="px-4 py-2.5"><span class="badge {{ 'bg-green-100 text-green-700' if r.status=='Processed' else 'bg-amber-100 text-amber-700' }}">{{ r.status }}</span></td>{% endif %}
+        {% if kind == 'leave' %}<td class="px-4 py-2.5 text-gray-600">{{ r.type }}</td><td class="px-4 py-2.5">{{ r.balance }} days</td><td class="px-4 py-2.5">{{ r.pending }}</td>{% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

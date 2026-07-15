@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-lg">
+  <a href="/requisitions" class="text-sm text-gray-400 hover:text-gray-600">← Requisitions</a>
+  <h1 class="text-xl font-semibold mt-2 mb-1">New requisition</h1>
+  <p class="text-sm text-gray-500 mb-6">Pick the basics — then the discovery agent runs a ~10-minute intake to build the Role Contract.</p>
+
+  <form method="post" action="/requisitions/new" class="card p-5 space-y-4">
+    <div>
+      <label class="block text-sm font-medium mb-1">Role title</label>
+      <input name="title" required placeholder="e.g. Senior Backend Engineer"
+             class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-100">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Department</label>
+      <select name="department" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+        {% for d in departments %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Hiring manager</label>
+      <select name="hiring_manager_id" required class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+        {% for m in managers %}<option value="{{ m.id }}">{{ m.name }} — {{ m.designation }} ({{ m.department }})</option>{% endfor %}
+      </select>
+    </div>
+    <button class="w-full bg-brand-600 text-white text-sm px-4 py-2.5 rounded-lg hover:bg-brand-700">Start intake →</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "_req_header.html" %}
+
+<div class="mb-4 flex items-center justify-between">
+  <div class="text-sm text-gray-500">Review the Role Contract before it renders any downstream artifact.</div>
+  {% if can_render %}
+  <form method="post" action="/requisitions/{{ req.id }}/contract/approve">
+    <button class="bg-green-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-green-700">Approve &amp; generate renderings →</button>
+  </form>
+  {% else %}
+  <div class="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-2">
+    Cannot render — {{ missing|length }} critical field(s) missing: {{ missing|join(', ') }}
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <div class="card p-5">
+    <div class="text-sm font-semibold mb-3">One-pager</div>
+    <div class="prose-mini">{{ contract.one_pager | markdown | safe }}</div>
+  </div>
+  <div class="card p-5">
+    <div class="text-sm font-semibold mb-3">Structured fields &amp; provenance</div>
+    {% include "_contract_fields.html" %}
+  </div>
+</div>
+{% endblock %}
