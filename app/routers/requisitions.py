@@ -161,6 +161,19 @@ def intake_page(req_id: int, request: Request, db: Session = Depends(get_db)):
     )
 
 
+@router.get("/{req_id}/intake/transcript")
+def intake_transcript(req_id: int, request: Request, db: Session = Depends(get_db)):
+    """Read-only view of the intake conversation that produced the current
+    contract version — useful for review/demo once intake has moved on."""
+    req = _get_req(db, req_id)
+    contract = req.current_contract
+    messages = (contract.chat_state or {}).get("messages", []) if contract else []
+    return _tmpl(request).TemplateResponse(request, "intake_transcript.html",
+        {"request": request, "nav": "requisitions", "page_title": f"Intake transcript · {req.title}",
+         "req": req, "contract": contract, "messages": messages},
+    )
+
+
 def _contract_state_payload(contract: models.Contract) -> dict:
     cfields = contract.fields or schema.blank_contract()
     fields_out = {}

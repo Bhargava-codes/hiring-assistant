@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-start justify-between mb-4">
+  <div>
+    <a href="/requisitions/{{ req.id }}" class="text-sm text-gray-400 hover:text-gray-600">← {{ req.title }}</a>
+    <h1 class="text-xl font-semibold mt-1">Intake transcript</h1>
+    <p class="text-sm text-gray-500">{{ req.department }} · {{ req.hiring_manager.name }} · Discovery agent
+      {% if contract %} · Contract v{{ contract.version }}{% endif %}</p>
+  </div>
+</div>
+
+<div class="card p-5 max-w-3xl">
+  {% if messages %}
+  <div class="space-y-3">
+    {% for m in messages %}
+    <div class="flex {{ 'justify-end' if m.role == 'user' else 'justify-start' }}">
+      <div class="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap {{
+        'bg-brand-600 text-white rounded-br-sm' if m.role == 'user'
+        else 'bg-gray-100 text-gray-800 rounded-bl-sm' }}">{{ m.content }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-sm text-gray-400 text-center py-10">No conversation recorded for this contract version.</div>
+  {% endif %}
+</div>
+{% endblock %}

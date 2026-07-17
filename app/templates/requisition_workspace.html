@@ -100,6 +100,7 @@
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-semibold">One-pager · v{{ contract.version }}</div>
         <div class="flex items-center gap-3">
+          <a href="/requisitions/{{ req.id }}/intake/transcript" class="text-xs text-brand-600 hover:underline">View intake conversation</a>
           <a href="/requisitions/{{ req.id }}/ranking" class="text-xs text-brand-600 hover:underline">Rank sample profiles</a>
           <button onclick="document.getElementById('amend-modal').classList.remove('hidden')" class="text-xs text-brand-600 hover:underline">Amend</button>
         </div>
