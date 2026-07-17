@@ -49,6 +49,14 @@
   .icon-btn { width:34px; height:34px; border-radius:9999px; background:rgba(255,255,255,.55);
               display:grid; place-items:center; color:#3A3540; transition:background .12s; }
   .icon-btn:hover { background:#fff; }
+  /* Deel's second-level sub-nav row: sits below the lavender bar, plain white,
+     shows the modules within whichever top-level section is active. */
+  .subnav { background:#fff; border-bottom:1px solid #ECEAE4; }
+  .subnav-link { display:flex; align-items:center; gap:.4rem; padding:.45rem .8rem; border-radius:9999px;
+                 font-size:.85rem; color:#5A5650; font-weight:500; white-space:nowrap; transition:background .12s,color .12s; }
+  .subnav-link:hover { background:#F3F1EC; color:#1A1A1A; }
+  .subnav-link.active { background:#EBE9E3; color:#1A1A1A; font-weight:600; }
+  .subnav-link svg { width:.95rem; height:.95rem; flex:none; }
   .card { background:#fff; border:1px solid #ECEAE4; border-radius:1rem; box-shadow:0 1px 3px rgba(26,26,26,.04); }
   .badge { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.7rem; font-weight:600; }
   /* Filter/selector chips are pills; action buttons stay rounded rectangles (Deel). */
@@ -69,50 +77,69 @@
 </style>
 
 {% set nav = nav|default('') %}
+{% set section = 'people' if nav in ['employees','requisitions','performance','leave'] else ('payroll' if nav=='payroll' else 'home') %}
 <div class="min-h-screen flex flex-col text-gray-900">
-  <!-- Deel-style lavender top navigation -->
-  <header class="topnav sticky top-0 z-30">
-    <div class="h-14 flex items-center gap-3 px-5">
-      <!-- Wordmark -->
-      <a href="/dashboard" class="flex items-center gap-2 shrink-0">
-        <span class="w-7 h-7 rounded-xl bg-gray-900 text-white grid place-items-center font-bold text-sm font-display">C</span>
-        <span class="font-display font-bold text-[15px] tracking-tight hidden sm:block">Contract HRMS</span>
-      </a>
-      <!-- Org switcher -->
-      <div class="flex items-center gap-2 pl-3 ml-1 border-l border-black/10 shrink-0">
-        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-amber-300 to-brand-400"></div>
-        <div class="leading-tight hidden md:block">
-          <div class="text-sm font-semibold">{{ org_name }}</div>
-          <div class="text-[11px] text-gray-500">All Groups</div>
+  <!-- Deel-style two-level navigation: lavender top bar (sections) + white sub-nav (modules within the section) -->
+  <header class="sticky top-0 z-30">
+    <div class="topnav">
+      <div class="h-14 flex items-center gap-3 px-5">
+        <!-- Wordmark -->
+        <a href="/dashboard" class="flex items-center gap-2 shrink-0">
+          <span class="w-7 h-7 rounded-xl bg-gray-900 text-white grid place-items-center font-bold text-sm font-display">C</span>
+          <span class="font-display font-bold text-[15px] tracking-tight hidden sm:block">Contract HRMS</span>
+        </a>
+        <!-- Org switcher -->
+        <div class="flex items-center gap-2 pl-3 ml-1 border-l border-black/10 shrink-0">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-amber-300 to-brand-400"></div>
+          <div class="leading-tight hidden md:block">
+            <div class="text-sm font-semibold">{{ org_name }}</div>
+            <div class="text-[11px] text-gray-500">All Groups</div>
+          </div>
+        </div>
+        <!-- Top-level sections -->
+        <nav class="flex items-center gap-0.5 ml-2 overflow-x-auto">
+          <a href="/dashboard" class="topnav-link {{ 'active' if section=='home' }}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Home</a>
+          <a href="/employees" class="topnav-link {{ 'active' if section=='people' }}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87"/></svg>People</a>
+          <a href="/payroll" class="topnav-link {{ 'active' if section=='payroll' }}">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payroll</a>
+        </nav>
+        <!-- Right cluster -->
+        <div class="ml-auto flex items-center gap-1.5 shrink-0">
+          {% if not llm_online() %}
+          <span class="text-[11px] font-medium bg-amber-100 text-amber-700 rounded-full px-2.5 py-1 hidden lg:inline">Offline mode</span>
+          {% endif %}
+          <div class="icon-btn" title="Search"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div>
+          <a href="/settings" class="icon-btn {{ 'ring-2 ring-brand-400' if nav=='settings' }}" title="Settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 006 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15H4.5a2 2 0 110-4h.09A1.65 1.65 0 006 9.4"/></svg></a>
+          <div class="icon-btn" title="Help"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg></div>
+          <div class="icon-btn" title="Notifications"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></div>
+          <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 grid place-items-center text-xs font-semibold ml-0.5" title="{{ current_user }}">HA</div>
         </div>
       </div>
-      <!-- Primary nav -->
-      <nav class="flex items-center gap-0.5 ml-2 overflow-x-auto">
-        <a href="/dashboard" class="topnav-link {{ 'active' if nav=='dashboard' }}">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Dashboard</a>
-        <a href="/employees" class="topnav-link {{ 'active' if nav=='employees' }}">
+    </div>
+
+    {% if section == 'people' %}
+    <div class="subnav">
+      <div class="h-11 flex items-center gap-1 px-5 overflow-x-auto">
+        <a href="/employees" class="subnav-link {{ 'active' if nav=='employees' }}">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 20v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2M10 10a3 3 0 100-6 3 3 0 000 6zM21 20v-2a4 4 0 00-3-3.87"/></svg>People</a>
-        <a href="/requisitions" class="topnav-link {{ 'active' if nav=='requisitions' }}">
+        <a href="/requisitions" class="subnav-link {{ 'active' if nav=='requisitions' }}">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>Requisitions</a>
-        <a href="/performance" class="topnav-link {{ 'active' if nav=='performance' }}">
+        <a href="/performance" class="subnav-link {{ 'active' if nav=='performance' }}">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l3-3 4 4 5-6"/></svg>Performance</a>
-        <a href="/payroll" class="topnav-link {{ 'active' if nav=='payroll' }}">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payroll</a>
-        <a href="/leave" class="topnav-link {{ 'active' if nav=='leave' }}">
+        <a href="/leave" class="subnav-link {{ 'active' if nav=='leave' }}">
           <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>Leave</a>
-      </nav>
-      <!-- Right cluster -->
-      <div class="ml-auto flex items-center gap-1.5 shrink-0">
-        {% if not llm_online() %}
-        <span class="text-[11px] font-medium bg-amber-100 text-amber-700 rounded-full px-2.5 py-1 hidden lg:inline">Offline mode</span>
-        {% endif %}
-        <div class="icon-btn" title="Search"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div>
-        <a href="/settings" class="icon-btn {{ 'ring-2 ring-brand-400' if nav=='settings' }}" title="Settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 11-4 0v-.09A1.65 1.65 0 006 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15H4.5a2 2 0 110-4h.09A1.65 1.65 0 006 9.4"/></svg></a>
-        <div class="icon-btn" title="Help"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/></svg></div>
-        <div class="icon-btn" title="Notifications"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></div>
-        <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 grid place-items-center text-xs font-semibold ml-0.5" title="{{ current_user }}">HA</div>
       </div>
     </div>
+    {% elif section == 'payroll' %}
+    <div class="subnav">
+      <div class="h-11 flex items-center gap-1 px-5 overflow-x-auto">
+        <a href="/payroll" class="subnav-link active">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Payroll</a>
+      </div>
+    </div>
+    {% endif %}
   </header>
 
   <main class="flex-1 overflow-auto">
