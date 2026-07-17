@@ -134,6 +134,10 @@ class Rendering(Base):
     contract_id: Mapped[int] = mapped_column(ForeignKey("contracts.id"))
     type: Mapped[str] = mapped_column(String(24))
     content: Mapped[str] = mapped_column(Text)
+    # True once a human has hand-edited the generated markdown; distinguishes
+    # "as the model wrote it" from "someone changed this" in the UI.
+    edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     contract: Mapped["Contract"] = relationship(back_populates="renderings")

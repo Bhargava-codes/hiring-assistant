@@ -144,11 +144,27 @@
   {% set r = renderings.get(rt) %}
   <div class="rpanel card p-5 hidden" data-rpanel="{{ rt }}">
     <div class="flex items-center justify-between mb-3">
-      <div class="text-sm font-semibold">{{ rendering_labels[rt] }}</div>
-      <button onclick="copyRendering('{{ rt }}')" class="text-xs text-brand-600 hover:underline">Copy markdown</button>
+      <div class="flex items-center gap-2">
+        <div class="text-sm font-semibold">{{ rendering_labels[rt] }}</div>
+        {% if r and r.edited %}<span class="badge bg-amber-100 text-amber-700 text-[10px]">edited</span>{% endif %}
+      </div>
+      <div class="flex items-center gap-3" data-view-controls="{{ rt }}">
+        <button onclick="copyRendering('{{ rt }}')" class="text-xs text-brand-600 hover:underline">Copy markdown</button>
+        <button onclick="toggleEdit('{{ rt }}')" class="text-xs text-brand-600 hover:underline">Edit</button>
+      </div>
     </div>
-    <div class="prose-mini">{{ (r.content if r else '') | markdown | safe }}</div>
+
+    <div data-view="{{ rt }}" class="prose-mini">{{ (r.content if r else '') | markdown | safe }}</div>
     <textarea class="hidden" data-raw="{{ rt }}">{{ r.content if r else '' }}</textarea>
+
+    <form data-edit-form="{{ rt }}" class="hidden" method="post" action="/requisitions/{{ req.id }}/renderings/{{ rt }}/edit">
+      <textarea name="content" rows="20"
+        class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-100">{{ r.content if r else '' }}</textarea>
+      <div class="flex justify-end gap-2 mt-3">
+        <button type="button" onclick="cancelEdit('{{ rt }}')" class="text-sm text-gray-500 px-3 py-2">Cancel</button>
+        <button class="bg-gray-900 text-white text-sm px-4 py-2 rounded-xl hover:bg-black">Save changes</button>
+      </div>
+    </form>
   </div>
   {% endfor %}
   {% else %}
@@ -226,6 +242,16 @@ function copyRendering(rt){
     const btn = event.target; const t = btn.textContent; btn.textContent = 'Copied ✓';
     setTimeout(() => btn.textContent = t, 1200);
   });
+}
+function toggleEdit(rt){
+  document.querySelector(`[data-view="${rt}"]`).classList.add('hidden');
+  document.querySelector(`[data-view-controls="${rt}"]`).classList.add('hidden');
+  document.querySelector(`[data-edit-form="${rt}"]`).classList.remove('hidden');
+}
+function cancelEdit(rt){
+  document.querySelector(`[data-view="${rt}"]`).classList.remove('hidden');
+  document.querySelector(`[data-view-controls="${rt}"]`).classList.remove('hidden');
+  document.querySelector(`[data-edit-form="${rt}"]`).classList.add('hidden');
 }
 // Auto-open first rendering tab.
 document.addEventListener('DOMContentLoaded', () => {

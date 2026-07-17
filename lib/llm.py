@@ -14,6 +14,7 @@ back to a deterministic offline mode so the prototype stays demoable.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 from functools import lru_cache
@@ -22,6 +23,8 @@ from typing import Any
 from dotenv import load_dotenv
 
 load_dotenv()
+
+log = logging.getLogger("contract_hrms.llm")
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -92,7 +95,7 @@ def extract_json(
     *,
     model: str | None = None,
     temperature: float = 0.0,
-    max_tokens: int = 1600,
+    max_tokens: int = 500,
 ) -> dict[str, Any]:
     """Structured extraction call. Requests JSON output and parses defensively.
 
@@ -111,8 +114,12 @@ def extract_json(
         resp = _client().chat.completions.create(
             response_format={"type": "json_object"}, **create_kwargs
         )
-    except Exception:
-        # Some models/routes reject response_format; retry without it.
+    except Exception as e:
+        # Billing/rate-limit errors would just fail identically a second time —
+        # retrying only doubles the wasted call. Only retry (without
+        # response_format) for the "this route doesn't support it" case.
+        if getattr(e, "status_code", None) in (402, 429):
+            raise
         resp = _client().chat.completions.create(**create_kwargs)
 
     raw = (resp.choices[0].message.content or "").strip()

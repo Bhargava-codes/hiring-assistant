@@ -10,10 +10,13 @@ Offline fallbacks produce deterministic markdown so the flow works without a key
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from lib import llm, schema
 from lib.schema import FIELD_LABELS
+
+log = logging.getLogger("contract_hrms.render")
 
 
 def _val(cfields: dict, name: str) -> Any:
@@ -35,8 +38,8 @@ def generate_one_pager(cfields: dict, title: str, department: str) -> str:
     if llm.has_api_key():
         try:
             return _llm_one_pager(cfields, title, department)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("generate_one_pager: live call failed (%s) — using offline template", e)
     return _offline_one_pager(cfields, title, department)
 
 
@@ -45,14 +48,15 @@ def _llm_one_pager(cfields: dict, title: str, department: str) -> str:
         {
             "role": "system",
             "content": (
-                "You write a one-page Role Contract summary in clean markdown. "
-                "Sections in order: role in one line; Business outcome; 90-day "
-                "success; Three non-negotiables (with how each is verified); "
-                "Trade-offs; Deal-breaker; Comp band + placement logic + relaxation "
-                "order; Process (interview budget, rounds->criteria, decision "
-                "rights, offer date); Drift rule; Honest constraints. Be concise and "
-                "faithful to the data — never invent facts. Leave a short '_not "
-                "captured_' note for any empty field."
+                "You write a one-page Role Contract summary in clean markdown. Be "
+                "TERSE — one short line per section, not paragraphs; this must fit "
+                "a tight token budget. Sections in order: role in one line; "
+                "Business outcome; 90-day success; Three non-negotiables (with how "
+                "each is verified); Trade-offs; Deal-breaker; Comp band + placement "
+                "logic + relaxation order; Process (interview budget, "
+                "rounds->criteria, decision rights, offer date); Drift rule; Honest "
+                "constraints. Faithful to the data — never invent facts. A short "
+                "'_not captured_' note for any empty field."
             ),
         },
         {
@@ -63,7 +67,7 @@ def _llm_one_pager(cfields: dict, title: str, department: str) -> str:
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.4, max_tokens=1400)
+    return llm.chat(msgs, temperature=0.4, max_tokens=700)
 
 
 def _fmt(v: Any, empty: str = "_not captured_") -> str:
@@ -109,24 +113,25 @@ _RENDERING_BRIEFS = {
         "lead with the mission and the 90-day outcomes (NOT a duty list); include the "
         "comp band AND the logic for where someone lands in it; list AT MOST THREE "
         "must-haves; include an honest 'What's hard about this role' constraints "
-        "section. Warm, specific, no corporate filler."
+        "section. Warm, specific, no corporate filler. BE TERSE — tight token budget."
     ),
     "SOURCING_SPEC": (
         "Write the internal SOURCING SPEC in markdown for the recruiter: target "
         "profiles / titles / companies to search, boolean-style keywords, must-haves "
         "vs. nice-to-haves, the relaxation order to widen the funnel, and explicit "
-        "anti-patterns (the failure mode / deal-breaker)."
+        "anti-patterns (the failure mode / deal-breaker). BE TERSE — tight token budget."
     ),
     "SCREENING_RUBRIC": (
         "Write the SCREENING RUBRIC in markdown: for each of the three must-haves, a "
         "pass/fail signal and a probing question; a scoring table; and a note tying "
-        "screen depth to the interview budget (be selective when budget is tight)."
+        "screen depth to the interview budget (be selective when budget is tight). "
+        "BE TERSE — tight token budget."
     ),
     "PANEL_SCORECARDS": (
         "Write PANEL SCORECARDS in markdown: one scorecard per interview round mapped "
         "to the round->criteria plan, each with the criterion tested, 2–3 evaluation "
         "questions, and a 1–4 rating scale with anchors. Include decision rights and "
-        "the target offer date at the end."
+        "the target offer date at the end. BE TERSE — tight token budget."
     ),
 }
 
@@ -135,8 +140,8 @@ def generate_rendering(rtype: str, cfields: dict, title: str, department: str) -
     if llm.has_api_key():
         try:
             return _llm_rendering(rtype, cfields, title, department)
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("generate_rendering(%s): live call failed (%s) — using offline template", rtype, e)
     return _offline_rendering(rtype, cfields, title, department)
 
 
@@ -153,7 +158,7 @@ def _llm_rendering(rtype: str, cfields: dict, title: str, department: str) -> st
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.5, max_tokens=1600)
+    return llm.chat(msgs, temperature=0.5, max_tokens=700)
 
 
 def _offline_rendering(rtype: str, cfields: dict, title: str, department: str) -> str:
@@ -224,8 +229,8 @@ def reasons_share_theme(reasons: list[str]) -> dict[str, Any]:
                 ]
             )
             return {"match": bool(data.get("match")), "theme": str(data.get("theme", "")).strip()}
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("reasons_share_theme: live call failed (%s) — using offline keyword match", e)
     return _offline_theme(reasons)
 
 
@@ -274,8 +279,8 @@ def reconcile_ranking(cfields: dict, ranked: list[dict]) -> list[dict[str, Any]]
                 if note.strip():
                     out.append({"type": "stated_vs_revealed", "field": "must_haves", "note": note.strip()})
             return out
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("reconcile_ranking: live call failed (%s) — using offline heuristic", e)
     return _offline_reconcile(must_haves, ranked)
 
 

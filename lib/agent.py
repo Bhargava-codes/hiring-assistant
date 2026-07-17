@@ -18,10 +18,13 @@ State lives in Contract.chat_state:
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from lib import llm, schema
 from lib.schema import LAYERS, CRITICAL_FIELDS, FIELD_LABELS
+
+log = logging.getLogger("contract_hrms.agent")
 
 
 # --- Offline fallback: which fields each (layer, anchor) most maps to ---------
@@ -145,9 +148,15 @@ def extract_fields(anchor_text: str, user_text: str, current: dict) -> dict[str,
     if llm.has_api_key():
         try:
             data = llm.extract_json(_extraction_messages(anchor_text, user_text, current))
-            return _clean_extraction(data)
-        except Exception:
-            pass  # fall through to offline heuristic
+            cleaned = _clean_extraction(data)
+            if cleaned:
+                return cleaned
+            log.warning(
+                "extract_fields: live call returned no usable fields (empty/"
+                "truncated JSON) — falling back to offline heuristic for this turn"
+            )
+        except Exception as e:
+            log.warning("extract_fields: live call failed (%s) — falling back to offline heuristic", e)
     return _offline_extract(user_text, current)
 
 
@@ -277,7 +286,8 @@ def _acknowledge_and_ask(transcript: list[dict], next_anchor: str) -> str:
         ]
         out = llm.chat(msgs, temperature=0.5, max_tokens=180)
         return out if next_anchor.split()[0].lower() in out.lower() or next_anchor[:20] in out else f"{out}\n\n{next_anchor}"
-    except Exception:
+    except Exception as e:
+        log.warning("_acknowledge_and_ask: live call failed (%s) — using generic acknowledgment", e)
         return "Got it, thanks.\n\n" + next_anchor
 
 
@@ -297,7 +307,8 @@ def _recovery_followup(transcript: list[dict], missing: list[str]) -> str:
             }
         ]
         return llm.chat(msgs, temperature=0.5, max_tokens=140)
-    except Exception:
+    except Exception as e:
+        log.warning("_recovery_followup: live call failed (%s) — using generic follow-up", e)
         return f"Before we move on — one thing I still need: {labels}. Can you say a bit more?"
 
 

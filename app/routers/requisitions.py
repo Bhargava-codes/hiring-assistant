@@ -417,3 +417,24 @@ def rendering_raw(req_id: int, rtype: str, db: Session = Depends(get_db)):
             if r.type == rtype:
                 return HTMLResponse(r.content, media_type="text/plain")
     raise HTTPException(404, "Rendering not found")
+
+
+@router.post("/{req_id}/renderings/{rtype}/edit")
+def edit_rendering(
+    req_id: int, rtype: str, content: str = Form(...), db: Session = Depends(get_db)
+):
+    """Save a hand-edit to a generated rendering. Marks it 'edited' so the UI can
+    distinguish it from the model's original output; a later amend/regenerate on
+    this requisition still replaces it (a new contract version means fresh docs)."""
+    req = _get_req(db, req_id)
+    contract = req.current_contract
+    if not contract:
+        raise HTTPException(400, "No contract")
+    for r in contract.renderings:
+        if r.type == rtype:
+            r.content = content
+            r.edited = True
+            r.edited_at = datetime.utcnow()
+            db.commit()
+            return RedirectResponse(url=f"/requisitions/{req_id}?tab=renderings", status_code=303)
+    raise HTTPException(404, "Rendering not found")
