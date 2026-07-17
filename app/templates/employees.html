@@ -12,7 +12,7 @@
     <option value="{{ d }}" {{ 'selected' if d==dept }}>{{ d }}</option>
     {% endfor %}
   </select>
-  <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-brand-700">Filter</button>
+  <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-full hover:bg-brand-700">Filter</button>
   {% if q or dept %}<a href="/employees" class="text-sm text-gray-500 px-3 py-2">Clear</a>{% endif %}
 </form>
 

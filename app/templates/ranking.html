@@ -28,7 +28,7 @@
 
   <form method="post" action="/requisitions/{{ req.id }}/ranking" onsubmit="document.getElementById('order').value = currentOrder()">
     <input type="hidden" name="order" id="order">
-    <button class="bg-brand-600 text-white text-sm px-5 py-2.5 rounded-lg hover:bg-brand-700">Submit ranking &amp; reconcile →</button>
+    <button class="bg-brand-600 text-white text-sm px-5 py-2.5 rounded-full hover:bg-brand-700">Submit ranking &amp; reconcile →</button>
   </form>
 </div>
 {% endblock %}
