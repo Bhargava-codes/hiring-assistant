@@ -147,7 +147,7 @@ def extract_fields(anchor_text: str, user_text: str, current: dict) -> dict[str,
     """Return {field: value} extracted from the latest answer."""
     if llm.has_api_key():
         try:
-            data = llm.extract_json(_extraction_messages(anchor_text, user_text, current))
+            data = llm.extract_json(_extraction_messages(anchor_text, user_text, current), _label="extract_fields")
             cleaned = _clean_extraction(data)
             if cleaned:
                 return cleaned
@@ -284,7 +284,7 @@ def _acknowledge_and_ask(transcript: list[dict], next_anchor: str) -> str:
                 ),
             }
         ]
-        out = llm.chat(msgs, temperature=0.5, max_tokens=180)
+        out = llm.chat(msgs, temperature=0.5, max_tokens=180, _label="chat_acknowledge")
         return out if next_anchor.split()[0].lower() in out.lower() or next_anchor[:20] in out else f"{out}\n\n{next_anchor}"
     except Exception as e:
         log.warning("_acknowledge_and_ask: live call failed (%s) — using generic acknowledgment", e)
@@ -306,7 +306,7 @@ def _recovery_followup(transcript: list[dict], missing: list[str]) -> str:
                 ),
             }
         ]
-        return llm.chat(msgs, temperature=0.5, max_tokens=140)
+        return llm.chat(msgs, temperature=0.5, max_tokens=140, _label="chat_recovery_followup")
     except Exception as e:
         log.warning("_recovery_followup: live call failed (%s) — using generic follow-up", e)
         return f"Before we move on — one thing I still need: {labels}. Can you say a bit more?"

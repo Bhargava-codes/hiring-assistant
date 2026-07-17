@@ -63,12 +63,27 @@ def _extra_headers() -> dict[str, str]:
     return headers
 
 
+def _log_usage(label: str, resp) -> None:
+    """Log exact tokens + real USD cost for a completion, per OpenRouter's
+    usage.include response (not an estimate — this is what was actually billed)."""
+    u = getattr(resp, "usage", None)
+    if not u:
+        return
+    cost = getattr(u, "cost", None)
+    cost_str = f"${cost:.6f}" if cost is not None else "n/a"
+    log.info(
+        "%s: prompt=%d completion=%d total=%d tokens, cost=%s (model=%s)",
+        label, u.prompt_tokens, u.completion_tokens, u.total_tokens, cost_str, resp.model,
+    )
+
+
 def chat(
     messages: list[dict[str, str]],
     *,
     model: str | None = None,
     temperature: float = 0.6,
     max_tokens: int = 1400,
+    _label: str = "chat",
 ) -> str:
     """Conversational / long-form completion. Returns assistant text."""
     resp = _client().chat.completions.create(
@@ -77,7 +92,9 @@ def chat(
         temperature=temperature,
         max_tokens=max_tokens,
         extra_headers=_extra_headers(),
+        extra_body={"usage": {"include": True}},
     )
+    _log_usage(_label, resp)
     return (resp.choices[0].message.content or "").strip()
 
 
@@ -96,6 +113,7 @@ def extract_json(
     model: str | None = None,
     temperature: float = 0.0,
     max_tokens: int = 500,
+    _label: str = "extract_json",
 ) -> dict[str, Any]:
     """Structured extraction call. Requests JSON output and parses defensively.
 
@@ -109,6 +127,7 @@ def extract_json(
         temperature=temperature,
         max_tokens=max_tokens,
         extra_headers=_extra_headers(),
+        extra_body={"usage": {"include": True}},
     )
     try:
         resp = _client().chat.completions.create(
@@ -122,6 +141,7 @@ def extract_json(
             raise
         resp = _client().chat.completions.create(**create_kwargs)
 
+    _log_usage(_label, resp)
     raw = (resp.choices[0].message.content or "").strip()
     return _parse_json_loose(raw)
 

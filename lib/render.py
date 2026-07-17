@@ -67,7 +67,7 @@ def _llm_one_pager(cfields: dict, title: str, department: str) -> str:
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.4, max_tokens=700)
+    return llm.chat(msgs, temperature=0.4, max_tokens=700, _label="one_pager")
 
 
 def _fmt(v: Any, empty: str = "_not captured_") -> str:
@@ -158,7 +158,7 @@ def _llm_rendering(rtype: str, cfields: dict, title: str, department: str) -> st
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.5, max_tokens=700)
+    return llm.chat(msgs, temperature=0.5, max_tokens=700, _label=f"rendering_{rtype}")
 
 
 def _offline_rendering(rtype: str, cfields: dict, title: str, department: str) -> str:
@@ -226,7 +226,8 @@ def reasons_share_theme(reasons: list[str]) -> dict[str, Any]:
                         ),
                     },
                     {"role": "user", "content": "Reasons:\n- " + "\n- ".join(reasons)},
-                ]
+                ],
+                _label="drift_theme_match",
             )
             return {"match": bool(data.get("match")), "theme": str(data.get("theme", "")).strip()}
         except Exception as e:
@@ -271,7 +272,8 @@ def reconcile_ranking(cfields: dict, ranked: list[dict]) -> list[dict[str, Any]]
                             )
                         ),
                     },
-                ]
+                ],
+                _label="ranking_reconcile",
             )
             out = []
             for c in data.get("conflicts", [])[:4]:

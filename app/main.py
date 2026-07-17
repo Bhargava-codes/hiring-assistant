@@ -5,6 +5,8 @@ layer (read-only stubs). Run with:  make dev   (or)   uvicorn app.main:app --rel
 """
 from __future__ import annotations
 
+import logging
+
 import markdown as md
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -14,6 +16,10 @@ from fastapi.templating import Jinja2Templates
 from lib import llm
 from lib.db import init_db
 from app.routers import dashboard, employees, requisitions, stubs
+
+# INFO so lib/llm.py's per-call token+cost logging and the agent/render
+# fallback warnings both show up in the terminal running uvicorn.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="Contract HRMS")
 
