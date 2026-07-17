@@ -2,11 +2,10 @@
 {% block content %}
 <div class="max-w-2xl">
   <a href="/requisitions/{{ req.id }}" class="text-sm text-gray-400 hover:text-gray-600">← {{ req.title }}</a>
-  <h1 class="text-xl font-semibold mt-1 mb-1">Revealed-preference exercise</h1>
+  <h1 class="text-xl font-semibold mt-1 mb-1">Rank sample profiles</h1>
   <p class="text-sm text-gray-500 mb-5">
-    Drag to rank these anonymized profiles from <strong>best fit (top)</strong> to worst. On submit,
-    the agent reconciles your ranking against the contract's stated must-haves and flags any
-    <span class="text-violet-600">stated vs revealed</span> divergences.
+    Drag to rank these anonymized profiles from <strong>best fit (top)</strong> to worst. When you submit,
+    we compare your ranking with the must-haves in the contract and flag anything that doesn't match.
   </p>
 
   <ul id="ranklist" class="space-y-2 mb-5">
@@ -28,7 +27,7 @@
 
   <form method="post" action="/requisitions/{{ req.id }}/ranking" onsubmit="document.getElementById('order').value = currentOrder()">
     <input type="hidden" name="order" id="order">
-    <button class="bg-gray-900 text-white text-sm px-5 py-2.5 rounded-xl hover:bg-black">Submit ranking &amp; reconcile →</button>
+    <button class="bg-gray-900 text-white text-sm px-5 py-2.5 rounded-xl hover:bg-black">Submit ranking →</button>
   </form>
 </div>
 {% endblock %}

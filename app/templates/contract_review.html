@@ -4,8 +4,8 @@
 
 <div class="mb-4 flex items-center justify-between">
   <div class="text-sm text-gray-500">
-    Review the Role Contract before it renders any downstream artifact.
-    <a href="/requisitions/{{ req.id }}/ranking" class="text-brand-600 hover:underline ml-1">Run revealed-preference exercise →</a>
+    Review the Role Contract before you generate any documents from it.
+    <a href="/requisitions/{{ req.id }}/ranking" class="text-brand-600 hover:underline ml-1">Rank sample profiles →</a>
   </div>
   {% if can_render %}
   <form method="post" action="/requisitions/{{ req.id }}/contract/approve">
@@ -13,7 +13,7 @@
   </form>
   {% else %}
   <div class="text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-3 py-2">
-    Cannot render — {{ missing|length }} critical field(s) missing: {{ missing|join(', ') }}
+    Complete {{ missing|length }} required field(s) to generate documents: {{ missing|join(', ') }}
   </div>
   {% endif %}
 </div>

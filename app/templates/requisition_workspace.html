@@ -20,7 +20,7 @@
       <div class="text-lg">⚠️</div>
       <div class="flex-1">
         <div class="text-sm font-semibold text-amber-900">You've rejected 3 candidates for a reason not in the contract.</div>
-        <div class="text-sm text-amber-800 mt-0.5">Shared theme: <span class="font-medium">"{{ drift.theme }}"</span>. Amend the contract first, or dismiss.</div>
+        <div class="text-sm text-amber-800 mt-0.5">These share the theme <span class="font-medium">"{{ drift.theme }}"</span>. Amend the contract, or dismiss this alert.</div>
         <div class="mt-3 flex items-center gap-2">
           <button onclick="document.getElementById('amend-modal').classList.remove('hidden')"
                   class="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-black">Amend contract</button>
@@ -49,7 +49,7 @@
       {% if burndown.math %}<div class="text-red-500 mt-1 font-mono text-[11px]">{{ burndown.math }}</div>{% endif %}
     </div>
     {% elif burndown.has_offer %}
-    <div class="mt-2 text-xs text-green-600">An offer is out — within budget.</div>
+    <div class="mt-2 text-xs text-green-600">An offer is out. You're within budget.</div>
     {% endif %}
   </div>
 
@@ -100,7 +100,7 @@
       <div class="flex items-center justify-between mb-3">
         <div class="text-sm font-semibold">One-pager · v{{ contract.version }}</div>
         <div class="flex items-center gap-3">
-          <a href="/requisitions/{{ req.id }}/ranking" class="text-xs text-brand-600 hover:underline">Ranking exercise</a>
+          <a href="/requisitions/{{ req.id }}/ranking" class="text-xs text-brand-600 hover:underline">Rank sample profiles</a>
           <button onclick="document.getElementById('amend-modal').classList.remove('hidden')" class="text-xs text-brand-600 hover:underline">Amend</button>
         </div>
       </div>

@@ -69,17 +69,17 @@ def burndown(req: "models.Requisition") -> dict[str, Any]:
         if pass_rate == 0:
             expected = "no offers projected"
             warning = (
-                f"You've used {used}/{budget} interview slots with no offer. At the "
-                f"current pass-rate (0 of {decided} interviewed advanced to offer), the "
-                f"budget exhausts before a hire. Consider relaxing a must-have or "
-                f"revisiting the screen."
+                f"You've used {used}/{budget} interview slots with no offer. At this "
+                f"pass-rate (0 of {decided} interviewed reached an offer), you'll run out "
+                f"of slots before making a hire. Consider relaxing a must-have or "
+                f"tightening the screen."
             )
             math = f"0 offers / {decided} interviewed → 0% pass-rate × {remaining} slots left = {expected}."
         elif remaining and (1 / pass_rate) > remaining:
             need = round(1 / pass_rate)
             warning = (
-                f"Projection: ~{need} interviews needed per offer, but only {remaining} "
-                f"slots remain. Budget likely exhausts before an offer."
+                f"At this pass-rate you'll need about {need} interviews per offer, but "
+                f"only {remaining} slots remain. You'll likely run out before an offer."
             )
             math = f"1 / {pass_rate:.0%} pass-rate ≈ {need} interviews/offer > {remaining} slots left."
 
