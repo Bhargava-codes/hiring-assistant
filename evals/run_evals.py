@@ -109,7 +109,7 @@ def _distinct(o: dict, *keys) -> bool:
 def build_suite() -> list[dict]:
     return [
         # ===== STAGE 2 — Field extraction ====================================
-        {"stage": "2 · Extraction", "name": "Comp, three things at once",
+        {"stage": "2 · Extraction", "name": "Comp — three things at once",
          "run": lambda: _extract(3, 0,
             "Comp band is 25 to 35 lakh fixed, placement depends on the size of book "
             "they've carried before, and yes we're fine publishing it."),
@@ -222,13 +222,13 @@ def build_suite() -> list[dict]:
          ]},
 
         # ===== STAGE 5 — Drift theme match ==================================
-        {"stage": "5 · Drift theme", "name": "Same theme, literal wording",
+        {"stage": "5 · Drift theme", "name": "Same theme — literal wording",
          "run": lambda: render.reasons_share_theme(
             ["Poor communication on the call", "Communication was weak", "Bad written communication"]),
          "checks": [
             C("detects the shared theme", lambda o: o.get("match") is True),
          ]},
-        {"stage": "5 · Drift theme", "name": "Same theme, different wording",
+        {"stage": "5 · Drift theme", "name": "Same theme — different wording",
          "run": lambda: render.reasons_share_theme(
             ["Couldn't articulate their thinking", "Struggled to explain tradeoffs", "Vague and hard to follow"]),
          "checks": [
@@ -259,7 +259,7 @@ def build_suite() -> list[dict]:
     ]
 
 
-def run(live: bool, delay: float = 0.0) -> int:
+def run(live: bool, delay: float = 0.0, csv_path: str | None = None) -> int:
     if not live:
         llm.has_api_key = lambda: False  # force every stage onto its offline path
     mode = "LIVE (" + llm.INTAKE_MODEL + ")" if live else "OFFLINE (deterministic fallback)"
@@ -268,6 +268,7 @@ def run(live: bool, delay: float = 0.0) -> int:
           + (f" · pacing {delay}s/call" if live and delay else "") + "\n" + "=" * 64)
     total_pass = total_run = total_skip = 0
     stage_totals: dict[str, list[int]] = {}
+    records: list[dict] = []  # one row per check, for the CSV sheet
 
     for i, case in enumerate(build_suite()):
         stage = case["stage"]
@@ -284,12 +285,19 @@ def run(live: bool, delay: float = 0.0) -> int:
         if err is not None:
             print(f"  ✗ run failed: {type(err).__name__}: {str(err)[:90]}")
             stage_totals.setdefault(stage, [0, 0])
+            for desc, fn, live_only in case["checks"]:
+                records.append({"stage": stage, "case": case["name"], "check": desc,
+                                "type": "live-only" if live_only else "structural",
+                                "result": "RUN-ERROR", "detail": f"{type(err).__name__}: {str(err)[:80]}"})
             continue
 
         for desc, fn, live_only in case["checks"]:
+            ctype = "live-only" if live_only else "structural"
             if live_only and not live:
                 print(f"  ~ SKIP (live-only): {desc}")
                 total_skip += 1
+                records.append({"stage": stage, "case": case["name"], "check": desc,
+                                "type": ctype, "result": "SKIP", "detail": "needs a live model"})
                 continue
             try:
                 ok = bool(fn(out))
@@ -299,6 +307,9 @@ def run(live: bool, delay: float = 0.0) -> int:
             total_run += 1
             st = stage_totals.setdefault(stage, [0, 0])
             st[1] += 1
+            records.append({"stage": stage, "case": case["name"], "check": desc,
+                            "type": ctype, "result": "PASS" if ok else "FAIL",
+                            "detail": "" if ok else str(out)[:160]})
             if ok:
                 total_pass += 1
                 st[0] += 1
@@ -311,6 +322,15 @@ def run(live: bool, delay: float = 0.0) -> int:
         print(f"  {stage:28s} {p}/{t}")
     print(f"\nTOTAL: {total_pass}/{total_run} passed"
           + (f"  ({total_skip} live-only checks skipped in offline mode)" if not live else ""))
+
+    if csv_path:
+        import csv
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["stage", "case", "check", "type", "result", "detail"])
+            w.writeheader()
+            w.writerows(records)
+        print(f"\nWrote {len(records)} rows to {csv_path}")
+
     return 0 if total_pass == total_run else 1
 
 
@@ -319,5 +339,6 @@ if __name__ == "__main__":
     ap.add_argument("--live", action="store_true", help="run against the configured OpenRouter model")
     ap.add_argument("--delay", type=float, default=4.0,
                     help="seconds between calls in live mode (default 4.0, ~15/min to stay under the free 16/min cap)")
+    ap.add_argument("--csv", metavar="PATH", help="write a per-check results sheet to this CSV path")
     args = ap.parse_args()
-    sys.exit(run(args.live, args.delay))
+    sys.exit(run(args.live, args.delay, args.csv))

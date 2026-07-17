@@ -1,0 +1,40 @@
+stage,case,check,type,result,detail
+2 · Extraction,Comp — three things at once,captures comp_band,structural,PASS,
+2 · Extraction,Comp — three things at once,captures comp_logic,structural,PASS,
+2 · Extraction,Comp — three things at once,captures comp_publishable,structural,PASS,
+2 · Extraction,Comp — three things at once,the three comp values are DISTINCT (no whole-answer duplication),live-only,SKIP,needs a live model
+2 · Extraction,Comp — three things at once,comp_publishable is a short yes/no,live-only,SKIP,needs a live model
+2 · Extraction,The vague non-answer,does NOT hallucinate a 90-day success from a non-answer,live-only,SKIP,needs a live model
+2 · Extraction,Three must-haves with verification,captures must_haves as a list,structural,PASS,
+2 · Extraction,Three must-haves with verification,captures exactly three must-haves,live-only,SKIP,needs a live model
+2 · Extraction,Three must-haves with verification,each must-have carries a verification,live-only,SKIP,needs a live model
+2 · Extraction,Budget + rounds combined,interview_budget is an integer,structural,PASS,
+2 · Extraction,Budget + rounds combined,interview_budget == 6,structural,PASS,
+2 · Extraction,Budget + rounds combined,rounds captured as 2 distinct rounds,live-only,SKIP,needs a live model
+2 · Extraction,Budget written as a word,parses 'six' -> 6,live-only,SKIP,needs a live model
+2 · Extraction,Trade-off and deal-breaker together,captures trade_offs,structural,PASS,
+2 · Extraction,Trade-off and deal-breaker together,captures deal_breaker,structural,PASS,
+2 · Extraction,Trade-off and deal-breaker together,trade-off and deal-breaker are DISTINCT values,live-only,SKIP,needs a live model
+1 · Discovery agent,Acknowledge + ask next anchor,asks the intended next question,structural,PASS,
+1 · Discovery agent,Acknowledge + ask next anchor,never leaks internal jargon (layer/field/schema),structural,PASS,
+3 · One-pager,Full contract -> all sections,has Business outcome,structural,PASS,
+3 · One-pager,Full contract -> all sections,has 90-day success,structural,PASS,
+3 · One-pager,Full contract -> all sections,has non-negotiables,structural,PASS,
+3 · One-pager,Full contract -> all sections,has deal-breaker,structural,PASS,
+3 · One-pager,Full contract -> all sections,has comp,structural,PASS,
+3 · One-pager,Full contract -> all sections,has drift rule,structural,PASS,
+3 · One-pager,Full contract -> all sections,has honest constraints,structural,PASS,
+3 · One-pager,Partial contract flags the gaps,marks missing fields rather than fabricating,structural,PASS,
+4 · Rendering · Posting,Candidate posting rules,includes the comp band,structural,PASS,
+4 · Rendering · Posting,Candidate posting rules,has an honest 'what's hard' section,structural,PASS,
+4 · Rendering · Sourcing,Sourcing spec anti-patterns,names anti-patterns / deal-breaker to screen out,structural,PASS,
+4 · Rendering · Rubric,Screening rubric structure,contains a markdown table,structural,PASS,
+4 · Rendering · Rubric,Screening rubric structure,references the interview budget,structural,PASS,
+4 · Rendering · Scorecards,Panel scorecards structure,names interview rounds,structural,PASS,
+4 · Rendering · Scorecards,Panel scorecards structure,has a 1-4 rating scale,structural,PASS,
+5 · Drift theme,Same theme — literal wording,detects the shared theme,structural,PASS,
+5 · Drift theme,Same theme — different wording,detects the theme despite no shared keyword,live-only,SKIP,needs a live model
+5 · Drift theme,Genuinely unrelated reasons,does NOT invent a false theme,structural,PASS,
+5 · Drift theme,Below the 3-rejection threshold,no alert under 3 reasons,structural,PASS,
+6 · Ranking,Ranking contradicts a stated must-have,flags at least one stated-vs-revealed conflict,structural,PASS,
+6 · Ranking,Ranking contradicts a stated must-have,conflict notes are non-empty,structural,PASS,
