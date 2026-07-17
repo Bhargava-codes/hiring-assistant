@@ -57,6 +57,21 @@ app.include_router(stubs.router)
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
+    # Seed demo data when the database is empty (e.g. first boot on a host with
+    # an ephemeral filesystem, like Render) so the deployed app isn't blank.
+    try:
+        from lib.db import SessionLocal
+        from app import models
+
+        db = SessionLocal()
+        try:
+            if db.query(models.Employee).count() == 0:
+                from scripts.seed import main as seed_main
+                seed_main()
+        finally:
+            db.close()
+    except Exception as e:  # never let seeding crash startup
+        logging.getLogger("contract_hrms").warning("startup seed skipped: %s", e)
 
 
 @app.get("/", include_in_schema=False)

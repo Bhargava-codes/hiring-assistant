@@ -1,0 +1,16 @@
+# Render Blueprint. If the existing service was created manually, set the same
+# Build/Start commands in its dashboard Settings (see README "Deploy" section).
+services:
+  - type: web
+    name: hiring-assistant
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Must bind 0.0.0.0 and Render's $PORT — a hardcoded port (e.g. 8000) makes
+    # Render report "no open ports detected" and fail the deploy.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      # Optional: set OPENROUTER_API_KEY in the dashboard to enable live LLM
+      # calls. Without it the app runs fine in offline mode.
