@@ -23,7 +23,7 @@
         <div class="text-sm text-amber-800 mt-0.5">Shared theme: <span class="font-medium">"{{ drift.theme }}"</span>. Amend the contract first, or dismiss.</div>
         <div class="mt-3 flex items-center gap-2">
           <button onclick="document.getElementById('amend-modal').classList.remove('hidden')"
-                  class="bg-amber-600 text-white text-xs px-3 py-1.5 rounded-full hover:bg-amber-700">Amend contract</button>
+                  class="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-black">Amend contract</button>
           <form method="post" action="/requisitions/{{ req.id }}/drift/dismiss">
             <button class="text-xs text-amber-700 px-3 py-1.5">Dismiss</button>
           </form>
@@ -192,7 +192,7 @@
         class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mb-4"></textarea>
       <div class="flex justify-end gap-2">
         <button type="button" onclick="document.getElementById('amend-modal').classList.add('hidden')" class="text-sm text-gray-500 px-3 py-2">Cancel</button>
-        <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-full hover:bg-brand-700">Create v{{ contract.version + 1 }} →</button>
+        <button class="bg-gray-900 text-white text-sm px-4 py-2 rounded-xl hover:bg-black">Create v{{ contract.version + 1 }} →</button>
       </div>
     </form>
   </div>

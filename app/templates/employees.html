@@ -6,14 +6,14 @@
 
 <form method="get" class="flex flex-wrap gap-3 mb-4">
   <input name="q" value="{{ q }}" placeholder="Search name or ID…"
-         class="border border-gray-200 rounded-full px-4 py-2 text-sm w-64 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100">
-  <select name="dept" class="border border-gray-200 rounded-full px-4 py-2 text-sm bg-white">
+         class="border border-gray-200 rounded-xl px-4 py-2 text-sm w-72 bg-white focus:outline-none focus:ring-2 focus:ring-brand-100">
+  <select name="dept" class="chip text-sm">
     <option value="">All departments</option>
     {% for d in departments %}
     <option value="{{ d }}" {{ 'selected' if d==dept }}>{{ d }}</option>
     {% endfor %}
   </select>
-  <button class="bg-brand-600 text-white text-sm px-4 py-2 rounded-full hover:bg-brand-700">Filter</button>
+  <button class="bg-gray-900 text-white text-sm px-4 py-2 rounded-xl hover:bg-black">Filter</button>
   {% if q or dept %}<a href="/employees" class="text-sm text-gray-500 px-3 py-2">Clear</a>{% endif %}
 </form>
 

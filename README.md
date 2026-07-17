@@ -8,12 +8,14 @@ look-and-feel realism only.
 
 Built for design-partner demos, so it's kept simple and readable.
 
-**Design:** the UI is themed after Deel's product-app look — warm cream canvas
-(`#FFFBF4`), Deel blue (`#1032CF`), warm neutral greys, Inter body + a Space
-Grotesk display face echoing Deel's Bagoss headings, soft rounded cards and pill
-buttons. Tokens are sampled from Deel's own surfaces and centralized in the
-Tailwind config + `<style>` block of [`app/templates/base.html`](app/templates/base.html)
-(no Deel logo or trademarked assets are used).
+**Design:** the UI is themed after Deel's product app, calibrated against real
+Deel screenshots — a **lavender-gradient top navigation**, clean neutral-light
+pages (`#F6F5F2`) with white cards, **black primary buttons** with Deel blue
+(`#1032CF`) reserved for links/tabs/accents, pill-shaped status badges and filter
+chips, and Inter body + a Space Grotesk display face echoing Deel's Bagoss
+headings. Tokens are centralized in the Tailwind config + `<style>` block of
+[`app/templates/base.html`](app/templates/base.html) (no Deel logo or trademarked
+assets are used — the app keeps its own identity).
 
 > **Stack note:** the original brief specified Next.js. This machine has no
 > Node.js toolchain, so — with the user's go-ahead — the same product is built
