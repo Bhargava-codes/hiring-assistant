@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from lib import llm, schema
@@ -45,6 +46,27 @@ _ANCHOR_PRIMARY: dict[tuple[int, int], list[str]] = {
 }
 
 
+# Goal-orientation: when the HM gives a non-answer to a CRITICAL field, the agent
+# does not accept it — it pushes, either redirecting to the owner/source or
+# reframing to pull out a concrete answer. One hint per critical field.
+CRITICAL_SOURCE: dict[str, str] = {
+    "business_outcome": "why the role exists — what actually breaks if this seat stays empty for six months",
+    "success_90d": "picture one specific great hire — name what they shipped or took off your plate",
+    "must_haves": "the two or three things you would never compromise on, however you'd phrase them",
+    "deal_breaker": "the single thing that is an instant no",
+    "comp_band": "if you're not sure, confirm the band with your finance team and I'll note it as pending — even a rough ceiling helps us start",
+    "relax_order": "if candidates with all your must-haves are rare at this band, which requirement flexes first",
+    "interview_budget": "roughly how many candidates you can realistically interview yourself",
+    "rounds": "how many rounds, and what each round is really testing",
+    "drift_precommitment": "just a yes or no — if three candidates get rejected for a reason we didn't write down, do we update this contract first",
+}
+
+
+def _anchor_critical_fields(layer: int, anchor: int) -> list[str]:
+    """Critical fields the given anchor is meant to capture."""
+    return [f for f in _ANCHOR_PRIMARY.get((layer, anchor), []) if f in CRITICAL_FIELDS]
+
+
 def system_prompt() -> str:
     anchors = []
     for layer in LAYERS:
@@ -56,10 +78,12 @@ You are Maya, a senior technical recruiter. You run a ~10-minute intake \
 conversation with a hiring manager (HM) to capture a "Role Contract" — the real \
 definition of the role behind the job title.
 
-Your design principle is EXTRACTION, NOT INTERROGATION. There are 12 open \
-questions ("anchors"), 2 per layer across 6 layers. A single rich answer often \
-fills several parts of the contract at once — so let the HM talk and listen for \
-everything, don't march through a checklist.
+You are GOAL-ORIENTED, not just a listener. Your job is to actually CAPTURE the \
+critical items of the contract — you are not done with a topic until you have a \
+usable answer or you have pushed once and been told it truly isn't available. \
+There are 12 open questions ("anchors"), 2 per layer across 6 layers. A single \
+rich answer often fills several parts at once — so listen for everything — but a \
+non-answer on a critical item is a job to finish, not a box to skip.
 
 # PERSONA & TONE
 - Name: Maya. Warm, sharp, senior-recruiter energy — a trusted hiring partner, \
@@ -87,12 +111,19 @@ gently, don't just record it → "That's a senior ask for this band — want to 
 re-ask something already answered.
 - HM asks you a question or drifts off-topic: answer in one line, then steer back \
 to the current anchor.
-- Thin answer on a critical point: you get ONE targeted follow-up per layer, then \
-move on. Completion beats completeness.
+- NON-ANSWER on a CRITICAL item ("I don't know", "not sure", "market rate", a \
+dodge): do NOT accept it and do NOT move on. Push ONCE — say why it matters, then \
+either redirect them to where they can get it (e.g. comp/budget → "confirm with \
+your finance team and I'll note it as pending") or reframe to pull out a concrete \
+answer ("think of your last great hire — what could they do?"). Only after that \
+push do you move on.
+- NON-answer on a NON-critical item: fine, let it go and move on.
 
 # HARD RULES
 - Stay in scope: you capture the role; you do NOT negotiate comp or promise outcomes.
-- ONE anchor at a time. 1–3 sentences. Always.
+- Never accept a non-answer on a critical item without pushing once. Never invent \
+the answer yourself — if it truly isn't available, note it as pending and move on.
+- ONE question at a time. 1–3 sentences. Always.
 - Each turn you will be given the exact next line to deliver (an acknowledgment + \
 the next anchor, OR a single follow-up). Follow that instruction precisely and \
 keep the conversation's momentum."""
@@ -255,14 +286,29 @@ def _to_int(val: Any) -> int | None:
         return None
 
 
+# Explicit non-answers — a real model leaves the field empty for these, so the
+# offline heuristic must too (otherwise the goal-push can never fire).
+_NON_ANSWER = re.compile(
+    r"\b(i (don'?t|do not) know|dunno|no idea|not sure|unsure|can'?t say|"
+    r"not decided|haven'?t decided|to be decided|tbd|no clue|you (decide|tell me)|"
+    r"whatever|market rate|not really sure)\b", re.I)
+
+
+def _is_non_answer(text: str) -> bool:
+    t = text.strip()
+    return bool(_NON_ANSWER.search(t)) and len(t.split()) <= 10
+
+
 def _offline_extract(user_text: str, current: dict) -> dict[str, Any]:
     """Heuristic extraction used only without an API key.
 
-    Maps the answer to the primary field(s) of the anchor that was just asked.
+    Maps the answer to the primary field(s) of the anchor that was just asked —
+    unless the answer is an explicit non-answer, in which case nothing is
+    extracted (mirroring what a good model does, and letting the goal-push fire).
     """
     asked = current.get("_asked")  # injected by caller for offline
     text = user_text.strip()
-    if not asked or not text:
+    if not asked or not text or _is_non_answer(text):
         return {}
     primaries = _ANCHOR_PRIMARY.get((asked["layer"], asked["anchor"]), [])
     out: dict[str, Any] = {}
@@ -306,11 +352,6 @@ def _is_fuller(name: str, new_val: Any, old_val: Any) -> bool:
 
 # --- Conversation progression ------------------------------------------------
 
-def _layer_missing_critical(layer_id: int, contract_fields: dict) -> list[str]:
-    layer = LAYERS[layer_id]
-    fields = contract_fields.get("fields", {})
-    return [f for f in layer["fields"] if f in CRITICAL_FIELDS and not schema.is_filled(fields.get(f, {}))]
-
 
 def _acknowledge_and_ask(transcript: list[dict], next_anchor: str) -> str:
     """One-line acknowledgment of the last answer + the next anchor question."""
@@ -335,25 +376,36 @@ def _acknowledge_and_ask(transcript: list[dict], next_anchor: str) -> str:
         return "Got it, thanks.\n\n" + next_anchor
 
 
-def _recovery_followup(transcript: list[dict], missing: list[str]) -> str:
-    labels = ", ".join(FIELD_LABELS[m] for m in missing)
+def _goal_push(transcript: list[dict], fields: list[str]) -> str:
+    """Goal-oriented push on a critical field the HM did not really answer.
+
+    Does NOT accept the non-answer: states why it matters and either redirects
+    the HM to where they can get it (e.g. comp -> finance) or reframes to pull
+    out a concrete answer. Never invents the value.
+    """
+    hints = "; ".join(f"{FIELD_LABELS[f]} — {CRITICAL_SOURCE.get(f, 'give me a specific answer')}" for f in fields)
     if not llm.has_api_key():
-        return f"Before we move on — one thing I still need: {labels}. Can you say a bit more?"
+        return ("I don't want to leave this one open, it's important for the role: "
+                f"{hints}?")
     try:
         msgs = [{"role": "system", "content": system_prompt()}] + transcript[-6:] + [
             {
                 "role": "system",
                 "content": (
-                    "Ask ONE short, targeted recovery follow-up to capture this "
-                    f"still-missing critical information: {labels}. If the HM used a "
-                    "vague adjective, ground it instead. One or two sentences."
+                    "The hiring manager did NOT give a usable answer for a CRITICAL "
+                    "item. Do not accept the non-answer and do not move on. Push, "
+                    "warmly but firmly: briefly say why it matters, then EITHER "
+                    "redirect them to where they can get it OR reframe the question "
+                    "to pull out a concrete answer. Never invent the answer yourself. "
+                    f"One or two sentences. Item and how to handle it: {hints}"
                 ),
             }
         ]
-        return llm.chat(msgs, temperature=0.5, max_tokens=140, _label="chat_recovery_followup")
+        return llm.chat(msgs, temperature=0.5, max_tokens=150, _label="chat_goal_push")
     except Exception as e:
-        log.warning("_recovery_followup: live call failed (%s) — using generic follow-up", e)
-        return f"Before we move on — one thing I still need: {labels}. Can you say a bit more?"
+        log.warning("_goal_push: live call failed (%s) — using deterministic push", e)
+        return ("I don't want to leave this one open, it's important for the role: "
+                f"{hints}?")
 
 
 def _closing_sweep(contract_fields: dict) -> str | None:
@@ -411,13 +463,19 @@ def _next_message(state: dict, cfields: dict) -> tuple[str, bool]:
 
     layer_id = LAYERS[li]["id"]
 
-    # Recovery follow-up: only at the last anchor of a layer, once per layer.
-    if ai >= 1:
-        missing = _layer_missing_critical(layer_id, cfields)
-        if missing and layer_id not in state.get("recovery_used", []):
-            state.setdefault("recovery_used", []).append(layer_id)
-            state["asked"] = {"layer": layer_id, "anchor": ai}  # same anchor context
-            return _recovery_followup(transcript, missing), False
+    # GOAL-PUSH: if the anchor the HM just answered was meant to capture a
+    # critical field that is STILL empty, and we haven't pushed on it yet, push
+    # now instead of advancing — don't let a critical non-answer slide.
+    asked = state.get("asked")
+    if asked:
+        fields_map = cfields.get("fields", {})
+        pushed = state.setdefault("pushed", [])
+        to_push = [f for f in _anchor_critical_fields(asked["layer"], asked["anchor"])
+                   if not schema.is_filled(fields_map.get(f, {})) and f not in pushed]
+        if to_push:
+            pushed.extend(to_push)  # one push per field, then move on
+            # keep `asked` unchanged so the HM's next reply maps to this anchor
+            return _goal_push(transcript, to_push), False
 
     # Advance the pointer.
     if ai == 0:
