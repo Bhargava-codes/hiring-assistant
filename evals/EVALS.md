@@ -73,3 +73,52 @@ Each is written from the hiring manager's chair: what real behaviour it protects
 - `type` = `structural` | `live-only`
 - `result` (offline run) = `PASS` | `SKIP` (live-only, needs a model) | `FAIL`
 - Run `make evals-live` to replace the `SKIP`s with real `PASS`/`FAIL` once a model is reachable.
+
+---
+
+# Behavioural evals (`evals/scenarios.py`, sheet: `scenario_results.csv`)
+
+The suite above is single-turn / output-shape. This second suite drives the
+**whole intake** with scripted HM personas and evaluates the three dimensions a
+conversational agent actually needs. `make evals-scenarios` (offline) /
+`make evals-scenarios-live` (adds the LLM-judge).
+
+### The three personas
+
+| Persona | Voice | Expected goal quality |
+|---|---|---|
+| **Prepared operator** | cooperative, rich answers to all 12 anchors | renderable contract (all critical fields) |
+| **Busy skeptic** | terse, deflecting ("Market rate. Not publishing."), pushes back | reaches done but should **leave critical gaps** — a good model must **not fabricate** values for non-answers |
+| **Rambler** | verbose, tangential, but real content | renderable despite the noise |
+
+### Mapping to your three dimensions
+
+| Your dimension | Check(s) | Mode |
+|---|---|---|
+| **Instruction handling** | no jargon leaked, every turn bounded (<800 chars) | structural (both) |
+| | LLM-judge rubric: warm tone · acknowledges specifically · one question · in-scope · no jargon (pass = ≥4/5 incl. in-scope + no-jargon) | **live-only** |
+| **Scenario handling (goal y/n)** | reaches `done`; ≤20 turns; no anchor re-asked | structural (both) |
+| | goal-QUALITY: rich→renderable, non-answers→gaps (no fabrication) | **live-only** |
+| **Tool calls** | **N/A — no LLM function-calling.** The analog is the code-controlled action trigger: `done` firing at the right moment is what launches one-pager + rendering generation. Covered by the `done`/renderable checks. | structural |
+
+### Offline result: 15/15 structural pass · 6 live-only skipped
+
+**Honest caveat baked into the design:** offline extraction fills every field with
+the raw answer regardless of substance, so `can_render` is meaningless offline
+(all three personas show it True). That's why goal-QUALITY is **live-only** — only
+a real model leaves gaps for the skeptic's non-answers. Offline proves the
+**control flow** (completes, terminates, no re-ask, no jargon); the **behaviour
+quality** (tone, faithfulness, gap-handling) is unverified until `-live` runs.
+
+### The LLM-judge rubric (instruction adherence)
+
+Grades one mid-intake turn on 5 booleans — `warm_professional`,
+`acknowledges_specifically`, `one_question`, `in_scope`, `no_jargon` — pass only
+if ≥4/5 **and** `in_scope` + `no_jargon` both hold. Judge model = `EXTRACT_MODEL`.
+
+### Still NOT covered (honest backlog)
+
+- Safety / PII / refusal (e.g. "never store OTP/PAN") — no cases yet.
+- Prompt-injection / adversarial HM input.
+- Consistency/variance (same persona run N times).
+- The enforcement loop end-to-end (drift → amend → renderings regenerate).

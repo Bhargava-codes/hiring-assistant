@@ -1,0 +1,22 @@
+persona,check,type,result,detail
+"Prepared operator (cooperative, complete)",SCENARIO: reaches the end of intake (agent raises done),scenario/structural,PASS,
+"Prepared operator (cooperative, complete)",finishes within a sane number of turns (<=20),scenario/structural,PASS,
+"Prepared operator (cooperative, complete)",no already-answered anchor is re-asked,scenario/structural,PASS,
+"Prepared operator (cooperative, complete)",no internal jargon leaked in any turn,scenario/structural,PASS,
+"Prepared operator (cooperative, complete)",every turn is reasonably bounded (<800 chars),scenario/structural,PASS,
+"Prepared operator (cooperative, complete)",GOAL-QUALITY: rich input yields a renderable contract,instruction-judge,SKIP,needs live model
+"Prepared operator (cooperative, complete)",INSTRUCTION: a mid-intake turn passes the LLM-judge rubric,instruction-judge,SKIP,needs live model
+"Busy skeptic (terse, pushes back)",SCENARIO: reaches the end of intake (agent raises done),scenario/structural,PASS,
+"Busy skeptic (terse, pushes back)",finishes within a sane number of turns (<=20),scenario/structural,PASS,
+"Busy skeptic (terse, pushes back)",no already-answered anchor is re-asked,scenario/structural,PASS,
+"Busy skeptic (terse, pushes back)",no internal jargon leaked in any turn,scenario/structural,PASS,
+"Busy skeptic (terse, pushes back)",every turn is reasonably bounded (<800 chars),scenario/structural,PASS,
+"Busy skeptic (terse, pushes back)",GOAL-QUALITY: non-answers leave critical gaps (no fabrication),instruction-judge,SKIP,needs live model
+"Busy skeptic (terse, pushes back)",INSTRUCTION: a mid-intake turn passes the LLM-judge rubric,instruction-judge,SKIP,needs live model
+"Rambler (verbose, off-topic)",SCENARIO: reaches the end of intake (agent raises done),scenario/structural,PASS,
+"Rambler (verbose, off-topic)",finishes within a sane number of turns (<=20),scenario/structural,PASS,
+"Rambler (verbose, off-topic)",no already-answered anchor is re-asked,scenario/structural,PASS,
+"Rambler (verbose, off-topic)",no internal jargon leaked in any turn,scenario/structural,PASS,
+"Rambler (verbose, off-topic)",every turn is reasonably bounded (<800 chars),scenario/structural,PASS,
+"Rambler (verbose, off-topic)",GOAL-QUALITY: rich input yields a renderable contract,instruction-judge,SKIP,needs live model
+"Rambler (verbose, off-topic)",INSTRUCTION: a mid-intake turn passes the LLM-judge rubric,instruction-judge,SKIP,needs live model

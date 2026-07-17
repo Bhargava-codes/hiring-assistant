@@ -17,3 +17,10 @@ evals:
 
 evals-live:
 	. .venv/bin/activate && python -m evals.run_evals --live
+
+# Behavioural evals: multi-turn scenario/goal + instruction adherence (LLM-judge)
+evals-scenarios:
+	. .venv/bin/activate && python -m evals.scenarios
+
+evals-scenarios-live:
+	. .venv/bin/activate && python -m evals.scenarios --live
