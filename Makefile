@@ -22,5 +22,8 @@ evals-live:
 evals-scenarios:
 	. .venv/bin/activate && python -m evals.scenarios
 
+evals-goalpush:
+	. .venv/bin/activate && python -m evals.goal_push
+
 evals-scenarios-live:
 	. .venv/bin/activate && python -m evals.scenarios --live
