@@ -67,7 +67,7 @@ def _llm_one_pager(cfields: dict, title: str, department: str) -> str:
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.4, max_tokens=700, _label="one_pager")
+    return llm.chat(msgs, temperature=0.4, max_tokens=1400, _label="one_pager")
 
 
 def _fmt(v: Any, empty: str = "_not captured_") -> str:
@@ -158,7 +158,7 @@ def _llm_rendering(rtype: str, cfields: dict, title: str, department: str) -> st
             ),
         },
     ]
-    return llm.chat(msgs, temperature=0.5, max_tokens=700, _label=f"rendering_{rtype}")
+    return llm.chat(msgs, temperature=0.5, max_tokens=1600, _label=f"rendering_{rtype}")
 
 
 def _offline_rendering(rtype: str, cfields: dict, title: str, department: str) -> str:

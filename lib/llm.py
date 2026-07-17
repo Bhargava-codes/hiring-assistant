@@ -112,7 +112,7 @@ def extract_json(
     *,
     model: str | None = None,
     temperature: float = 0.0,
-    max_tokens: int = 500,
+    max_tokens: int = 800,
     _label: str = "extract_json",
 ) -> dict[str, Any]:
     """Structured extraction call. Requests JSON output and parses defensively.
