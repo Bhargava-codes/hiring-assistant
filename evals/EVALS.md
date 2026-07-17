@@ -116,6 +116,18 @@ Grades one mid-intake turn on 5 booleans — `warm_professional`,
 `acknowledges_specifically`, `one_question`, `in_scope`, `no_jargon` — pass only
 if ≥4/5 **and** `in_scope` + `no_jargon` both hold. Judge model = `EXTRACT_MODEL`.
 
+### Live verification log
+
+Free-tier rate-limiting makes systematic live runs impractical, but isolated
+calls occasionally get through. Confirmed against the real model:
+
+| Date | Check | Model | Result |
+|---|---|---|---|
+| 2026-07-18 | Stage 2 · comp field de-duplication | `google/gemma-4-31b-it:free` | ✅ **PASS** — the restructured prompt split *"25–35 lakh, depends on book size, yes publish"* into three distinct values (`comp_band`="25 to 35 lakh fixed", `comp_logic`="size of book they've carried", `comp_publishable`="yes"), vs the offline heuristic which copied the whole sentence into all three. The worked-examples prompt fix works on the real model. |
+
+Everything else in the live-only column remains **unverified** — the free pool
+429'd every attempt beyond isolated single calls (caught ~1 in 20 this session).
+
 ### Still NOT covered (honest backlog)
 
 - Safety / PII / refusal (e.g. "never store OTP/PAN") — no cases yet.
