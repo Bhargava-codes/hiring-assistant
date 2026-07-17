@@ -164,13 +164,19 @@ def intake_page(req_id: int, request: Request, db: Session = Depends(get_db)):
 @router.get("/{req_id}/intake/transcript")
 def intake_transcript(req_id: int, request: Request, db: Session = Depends(get_db)):
     """Read-only view of the intake conversation that produced the current
-    contract version — useful for review/demo once intake has moved on."""
+    contract version — useful for review/demo once intake has moved on. Shows
+    the same per-layer progress + provenance panel as the live intake screen,
+    rendered statically from the final contract state."""
     req = _get_req(db, req_id)
     contract = req.current_contract
     messages = (contract.chat_state or {}).get("messages", []) if contract else []
+    progress = schema.layer_progress(contract.fields) if contract else []
+    can_render = schema.can_render(contract.fields) if contract else False
     return _tmpl(request).TemplateResponse(request, "intake_transcript.html",
         {"request": request, "nav": "requisitions", "page_title": f"Intake transcript · {req.title}",
-         "req": req, "contract": contract, "messages": messages},
+         "req": req, "contract": contract, "messages": messages, "progress": progress,
+         "can_render": can_render,
+         "layers": schema.LAYERS, "field_labels": schema.FIELD_LABELS, "critical": schema.CRITICAL_FIELDS},
     )
 
 

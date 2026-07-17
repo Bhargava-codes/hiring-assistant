@@ -9,19 +9,50 @@
   </div>
 </div>
 
-<div class="card p-5 max-w-3xl">
-  {% if messages %}
-  <div class="space-y-3">
-    {% for m in messages %}
-    <div class="flex {{ 'justify-end' if m.role == 'user' else 'justify-start' }}">
-      <div class="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap {{
-        'bg-brand-600 text-white rounded-br-sm' if m.role == 'user'
-        else 'bg-gray-100 text-gray-800 rounded-bl-sm' }}">{{ m.content }}</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+  <!-- Chat transcript (static) -->
+  <div class="card flex flex-col overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-gray-100 text-sm font-semibold flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-green-500"></span> Discovery agent
     </div>
-    {% endfor %}
+    <div class="p-4 space-y-3 overflow-auto" style="max-height: calc(100vh - 260px)">
+      {% if messages %}
+        {% for m in messages %}
+        <div class="flex {{ 'justify-end' if m.role == 'user' else 'justify-start' }}">
+          <div class="max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap {{
+            'bg-brand-600 text-white rounded-br-sm' if m.role == 'user'
+            else 'bg-gray-100 text-gray-800 rounded-bl-sm' }}">{{ m.content }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-sm text-gray-400 text-center py-10">No conversation recorded for this contract version.</div>
+      {% endif %}
+    </div>
   </div>
-  {% else %}
-  <div class="text-sm text-gray-400 text-center py-10">No conversation recorded for this contract version.</div>
-  {% endif %}
+
+  <!-- Role Contract panel: same per-layer progress + provenance view as live intake -->
+  <div class="card flex flex-col overflow-hidden">
+    <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+      <div class="text-sm font-semibold">Role Contract</div>
+      {% if contract and can_render %}
+      <span class="badge bg-green-100 text-green-700">All critical fields ✓</span>
+      {% endif %}
+    </div>
+    {% if progress %}
+    <div class="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
+      {% for p in progress %}
+      <div class="text-center">
+        <div class="text-[10px] text-gray-400 mb-1 truncate" title="{{ p.name }}">L{{ p.id }} {{ p.name.split(' ')[0] }}</div>
+        <div class="h-1.5 bg-gray-100 rounded overflow-hidden">
+          <div class="h-1.5 {{ 'bg-green-500' if p.complete else 'bg-brand-500' }}" style="width: {{ (100 * p.filled / p.total)|round|int }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="p-4 overflow-auto" style="max-height: calc(100vh - 320px)">
+      {% if contract %}{% include "_contract_fields.html" %}{% endif %}
+    </div>
+  </div>
 </div>
 {% endblock %}
