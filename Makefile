@@ -1,4 +1,4 @@
-.PHONY: setup seed dev run
+.PHONY: setup seed dev run evals evals-live
 
 setup:
 	python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
@@ -10,3 +10,10 @@ dev:
 	. .venv/bin/activate && uvicorn app.main:app --reload --port 8000
 
 run: dev
+
+# Stage-by-stage evals (offline = deterministic + free; live = configured model)
+evals:
+	. .venv/bin/activate && python -m evals.run_evals
+
+evals-live:
+	. .venv/bin/activate && python -m evals.run_evals --live

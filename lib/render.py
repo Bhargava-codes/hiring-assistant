@@ -48,15 +48,22 @@ def _llm_one_pager(cfields: dict, title: str, department: str) -> str:
         {
             "role": "system",
             "content": (
-                "You write a one-page Role Contract summary in clean markdown. Be "
-                "TERSE — one short line per section, not paragraphs; this must fit "
-                "a tight token budget. Sections in order: role in one line; "
-                "Business outcome; 90-day success; Three non-negotiables (with how "
-                "each is verified); Trade-offs; Deal-breaker; Comp band + placement "
-                "logic + relaxation order; Process (interview budget, "
-                "rounds->criteria, decision rights, offer date); Drift rule; Honest "
-                "constraints. Faithful to the data — never invent facts. A short "
-                "'_not captured_' note for any empty field."
+                "# ROLE\n"
+                "You turn a structured Role Contract (JSON) into a clean one-page "
+                "markdown summary that a hiring manager and recruiter sign off on.\n\n"
+                "# OUTPUT SECTIONS (this exact order, as markdown headings)\n"
+                "1. Role in one line\n2. Business outcome\n3. 90-day success\n"
+                "4. Three non-negotiables (each with how it is verified)\n"
+                "5. Trade-offs\n6. Deal-breaker\n"
+                "7. Comp (band + placement logic + relaxation order)\n"
+                "8. Process (interview budget, rounds->criteria, decision rights, offer date)\n"
+                "9. Drift rule\n10. Honest constraints\n\n"
+                "# RULES\n"
+                "- Concise: one short line or tight bullet per point. No preamble, no filler.\n"
+                "- Use ONLY facts present in the contract JSON. Never invent or embellish.\n"
+                "- Exactly THREE non-negotiables (fewer only if fewer were captured).\n"
+                "- For any empty/missing field write \"_not captured_\" — never fabricate.\n\n"
+                "# OUTPUT\nReturn only the markdown. No commentary before or after."
             ),
         },
         {
@@ -109,29 +116,37 @@ def _offline_one_pager(cfields: dict, title: str, department: str) -> str:
 
 _RENDERING_BRIEFS = {
     "POSTING": (
-        "Write the CANDIDATE-FACING JOB POSTING in markdown. Rules (from the PRD): "
-        "lead with the mission and the 90-day outcomes (NOT a duty list); include the "
-        "comp band AND the logic for where someone lands in it; list AT MOST THREE "
-        "must-haves; include an honest 'What's hard about this role' constraints "
-        "section. Warm, specific, no corporate filler. BE TERSE — tight token budget."
+        "# TASK\nWrite the CANDIDATE-FACING JOB POSTING in markdown from the Role "
+        "Contract JSON.\n\n# RULES\n"
+        "- Lead with the mission and the 90-day OUTCOMES — not a duties/responsibilities list.\n"
+        "- Include the comp band AND the logic for where someone lands in it.\n"
+        "- List AT MOST THREE must-haves. Never more than three.\n"
+        "- Include an honest \"What's hard about this role\" section (from the constraints).\n"
+        "- Warm, specific, human. No corporate filler, no invented perks.\n"
+        "- Use only facts in the contract; mark genuine gaps as _to be confirmed_."
     ),
     "SOURCING_SPEC": (
-        "Write the internal SOURCING SPEC in markdown for the recruiter: target "
-        "profiles / titles / companies to search, boolean-style keywords, must-haves "
-        "vs. nice-to-haves, the relaxation order to widen the funnel, and explicit "
-        "anti-patterns (the failure mode / deal-breaker). BE TERSE — tight token budget."
+        "# TASK\nWrite the internal SOURCING SPEC in markdown for the recruiter.\n\n"
+        "# RULES\n"
+        "- Target profiles / titles / companies to search for.\n"
+        "- Boolean-style keyword strings.\n"
+        "- Must-haves vs. nice-to-haves, and the relaxation order to widen the funnel.\n"
+        "- Explicit ANTI-PATTERNS to screen out (the failure mode and the deal-breaker).\n"
+        "- Use only facts in the contract; mark genuine gaps as _to be confirmed_."
     ),
     "SCREENING_RUBRIC": (
-        "Write the SCREENING RUBRIC in markdown: for each of the three must-haves, a "
-        "pass/fail signal and a probing question; a scoring table; and a note tying "
-        "screen depth to the interview budget (be selective when budget is tight). "
-        "BE TERSE — tight token budget."
+        "# TASK\nWrite the SCREENING RUBRIC in markdown.\n\n# RULES\n"
+        "- For each of the three must-haves: a pass/fail signal and a probing question.\n"
+        "- Include a scoring table.\n"
+        "- Add a note tying screen depth to the interview budget (be selective when budget is tight).\n"
+        "- Use only facts in the contract; mark genuine gaps as _to be confirmed_."
     ),
     "PANEL_SCORECARDS": (
-        "Write PANEL SCORECARDS in markdown: one scorecard per interview round mapped "
-        "to the round->criteria plan, each with the criterion tested, 2–3 evaluation "
-        "questions, and a 1–4 rating scale with anchors. Include decision rights and "
-        "the target offer date at the end. BE TERSE — tight token budget."
+        "# TASK\nWrite PANEL SCORECARDS in markdown.\n\n# RULES\n"
+        "- One scorecard per interview round, mapped to the round->criteria plan.\n"
+        "- Each: the criterion tested, 2-3 evaluation questions, a 1-4 rating scale with anchors.\n"
+        "- End with the decision rights and the target offer date.\n"
+        "- Use only facts in the contract; mark genuine gaps as _to be confirmed_."
     ),
 }
 
