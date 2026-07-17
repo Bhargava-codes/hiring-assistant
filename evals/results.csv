@@ -38,3 +38,4 @@ stage,case,check,type,result,detail
 5 · Drift theme,Below the 3-rejection threshold,no alert under 3 reasons,structural,PASS,
 6 · Ranking,Ranking contradicts a stated must-have,flags at least one stated-vs-revealed conflict,structural,PASS,
 6 · Ranking,Ranking contradicts a stated must-have,conflict notes are non-empty,structural,PASS,
+6 · Ranking,Ranking agrees with the stated must-have,aligned ranking raises NO false stated-vs-revealed conflict,live-only,SKIP,needs a live model

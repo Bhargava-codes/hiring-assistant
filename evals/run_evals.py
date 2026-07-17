@@ -256,6 +256,14 @@ def build_suite() -> list[dict]:
             C("flags at least one stated-vs-revealed conflict", lambda o: len(o) >= 1),
             C("conflict notes are non-empty", lambda o: all(c.get("note") for c in o)),
          ]},
+        {"stage": "6 · Ranking", "name": "Ranking agrees with the stated must-have",
+         "run": lambda: render.reconcile_ranking(
+            make_contract({"must_haves": [{"text": "Reliability and on-call rigor", "verification": ""}],
+                           "deal_breaker": "No pedigree"}),
+            [profiles.PROFILE_BY_ID["p6"], profiles.PROFILE_BY_ID["p1"], profiles.PROFILE_BY_ID["p4"]]),
+         "checks": [
+            CL("aligned ranking raises NO false stated-vs-revealed conflict", lambda o: len(o) == 0),
+         ]},
     ]
 
 
