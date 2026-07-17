@@ -47,6 +47,15 @@
   .badge { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:9999px; font-size:.7rem; font-weight:600; }
   /* Solid action buttons default to Deel-style pills. */
   button.btn, a.btn { border-radius:9999px; }
+  /* Deel-style soft pastel hero band with blurred decorative blobs. */
+  .hero { position:relative; overflow:hidden; border-radius:1.25rem;
+          background:linear-gradient(115deg,#FCF3E3 0%,#FBEFE6 45%,#F4F0FB 100%); }
+  .hero > .hero-body { position:relative; z-index:1; }
+  .blob { position:absolute; border-radius:9999px; filter:blur(26px); opacity:.65; pointer-events:none; }
+  .blob-lav { background:#C9C0F5; } .blob-sky { background:#BFD4F6; }
+  .blob-peach { background:#F7D6AE; } .blob-mint { background:#BCE9D4; }
+  /* Deel-style pill inputs. */
+  .pill-input { border-radius:9999px; }
   .prose-mini h1{font-size:1.35rem;font-weight:700;margin:.4rem 0 .5rem;}
   .prose-mini h2{font-size:1.05rem;font-weight:700;margin:1rem 0 .35rem;color:#201B1B;}
   .prose-mini h3{font-size:.95rem;font-weight:600;margin:.75rem 0 .25rem;}

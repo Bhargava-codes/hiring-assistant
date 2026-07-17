@@ -2,12 +2,16 @@
 {% block content %}
 {% include "_req_header.html" %}
 
-<div class="card p-8 max-w-xl text-center">
+<div class="card p-8 max-w-xl text-center relative overflow-hidden">
+  <div class="blob blob-lav" style="width:120px;height:120px;top:-50px;left:-30px;opacity:.4;"></div>
+  <div class="blob blob-sky" style="width:130px;height:130px;bottom:-60px;right:-30px;opacity:.4;"></div>
+  <div class="relative">
   <div class="w-12 h-12 rounded-full bg-brand-100 text-brand-700 grid place-items-center mx-auto mb-3 text-lg">📝</div>
   <h2 class="font-semibold mb-1">This requisition is a draft</h2>
   <p class="text-sm text-gray-500 mb-5">No Role Contract has been captured yet. Start the discovery-agent intake to build one.</p>
   <form method="post" action="/requisitions/{{ req.id }}/start-intake">
     <button class="bg-brand-600 text-white text-sm px-5 py-2.5 rounded-full hover:bg-brand-700">Start intake →</button>
   </form>
+  </div>
 </div>
 {% endblock %}

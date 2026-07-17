@@ -1,12 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex items-center justify-between mb-5">
-  <div>
-    <h1 class="text-xl font-semibold">Requisitions</h1>
-    <p class="text-sm text-gray-500">Role Contracts and open searches</p>
-  </div>
-  <a href="/requisitions/new" class="bg-brand-600 text-white text-sm px-4 py-2 rounded-full hover:bg-brand-700">+ New requisition</a>
-</div>
+{% set new_btn %}<a href="/requisitions/new" class="bg-brand-600 text-white text-sm px-4 py-2 rounded-full hover:bg-brand-700">+ New requisition</a>{% endset %}
+{% with title="Requisitions", subtitle="Role Contracts and open searches", badge=new_btn %}
+  {% include "_hero.html" %}
+{% endwith %}
 
 <div class="card overflow-hidden">
   <table class="w-full text-sm">
