@@ -342,17 +342,30 @@ def seed_requisitions(db, by_dept: dict[str, list[models.Employee]]) -> None:
 
 
 def main() -> None:
-    _reset_db()
-    db = SessionLocal()
+    # Seed generation (one-pagers/renderings for the background fixtures) must
+    # NOT hit the live model: it fires ~10 heavy calls back-to-back, which is
+    # slow, burns the free-tier per-minute quota, and starves real intake turns
+    # that follow (seen on Render startups). Force the deterministic offline
+    # path for the duration of seeding only — restore afterwards, because on a
+    # server this runs in the same process that keeps serving live traffic.
+    from lib import llm as _llm
+
+    _orig_has_key = _llm.has_api_key
+    _llm.has_api_key = lambda: False
     try:
-        by_dept = seed_employees(db)
-        db.commit()
-        seed_requisitions(db, by_dept)
-        emp_count = db.query(models.Employee).count()
-        req_count = db.query(models.Requisition).count()
-        print(f"Seeded {emp_count} employees and {req_count} requisitions.")
+        _reset_db()
+        db = SessionLocal()
+        try:
+            by_dept = seed_employees(db)
+            db.commit()
+            seed_requisitions(db, by_dept)
+            emp_count = db.query(models.Employee).count()
+            req_count = db.query(models.Requisition).count()
+            print(f"Seeded {emp_count} employees and {req_count} requisitions.")
+        finally:
+            db.close()
     finally:
-        db.close()
+        _llm.has_api_key = _orig_has_key
 
 
 if __name__ == "__main__":

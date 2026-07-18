@@ -101,4 +101,29 @@ def debug_llm() -> dict:
         "key_looks_wrapped_in_quotes": bool(raw) and (raw[:1] in "\"'" or raw[-1:] in "\"'"),
         "intake_model": llm.INTAKE_MODEL,
         "extract_model": llm.EXTRACT_MODEL,
+        # Render sets RENDER_GIT_COMMIT on every deploy — definitive answer to
+        # "which build is actually live", no more guessing.
+        "commit": os.getenv("RENDER_GIT_COMMIT", "local-dev")[:12],
     }
+
+
+@app.post("/debug/reseed", include_in_schema=False)
+def debug_reseed() -> dict:
+    """Reset the demo database to its seeded state (demo/prototype tool: the
+    whole app is a single-persona prototype with fictional data only). Lets a
+    demo take be reset without redeploying the service."""
+    from scripts.seed import main as seed_main
+
+    seed_main()
+    from lib.db import SessionLocal
+    from app import models
+
+    db = SessionLocal()
+    try:
+        return {
+            "reseeded": True,
+            "employees": db.query(models.Employee).count(),
+            "requisitions": db.query(models.Requisition).count(),
+        }
+    finally:
+        db.close()
