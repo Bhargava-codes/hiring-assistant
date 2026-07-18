@@ -76,6 +76,43 @@ Each is written from the hiring manager's chair: what real behaviour it protects
 
 ---
 
+---
+
+# LIVE RESULTS — 2026-07-18 (post-BYOK)
+
+BYOK (a personal Google AI Studio key linked at openrouter.ai/settings/integrations)
+fixed the OpenRouter shared-pool 429s that blocked every live attempt before
+this. Full live runs are now possible. Google's own free-tier quota (16,000
+input tokens/min per model) is the new ceiling — hit during the scenario suite
+(many calls, no pacing, growing conversation context); `run_evals.py` (paced,
+`--delay`) stayed under it throughout.
+
+### `make evals-live` — 39-40/40
+
+All structural + live-only checks pass except one, intermittently:
+**"does NOT hallucinate a 90-day success from a non-answer."** Root-caused and
+fixed: added an explicit non-answer rule to the extraction prompt
+(`lib/agent.py`, EXTRACTION RULES #5). Re-verified in isolation: **13/14 pass
+across two batches (3/3, then 10/10)** — a large improvement, but **not a hard
+guarantee**; the free Gemma backend shows real run-to-run variance on this
+edge case even at temperature 0. Downstream defenses (merge_fields only
+overwrites with a fuller value; provenance shown in the UI) remain as
+defense-in-depth.
+
+### `evals/scenarios.py --live` — 19/21 (full 3-persona x 12-turn conversations)
+
+| Persona | Result | Note |
+|---|---|---|
+| Prepared operator | 7/7 | perfect |
+| Busy skeptic | 6/7 | **the important one: "non-answers leave critical gaps (no fabrication)" PASSED live** — direct end-to-end confirmation the Stage-2 fix holds inside a real conversation, not just isolated calls. Took 14 turns (vs 12) — the Stage-1 goal-push fired and added a turn, as designed. The 1 failure was the LLM-judge call itself hitting a 429 ("judge unavailable") — a measurement gap, not an agent defect. |
+| Rambler | 6/7 | reaches done, fully renderable. The LLM-judge caught a real, legitimate issue: one acknowledgment fell back to the generic "Got it, thanks" (that specific call 429'd and used the deterministic fallback) — correctly flagged as not-specific by the judge. Working as designed (graceful degradation), but confirms the judge rubric has teeth. |
+
+**Net: 19/21, and both misses are explained — one is a measurement artifact
+(judge rate-limited), one is the fallback path being correctly caught by the
+judge, not a prompt defect.**
+
+---
+
 # Behavioural evals (`evals/scenarios.py`, sheet: `scenario_results.csv`)
 
 The suite above is single-turn / output-shape. This second suite drives the

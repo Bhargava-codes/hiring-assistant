@@ -186,6 +186,10 @@ several keys — split the answer into its distinct pieces, one value per key.
 3. Do not invent or infer beyond what was said. Use the HM's own substance.
 4. If the answer refines a field already captured, return the fuller version; \
 otherwise leave already-captured fields out.
+5. NON-ANSWERS ("I don't know", "not sure", "we'll figure it out", "market \
+rate", deflections): these carry NO real information. Do NOT extract them as if \
+they were the value — omit the key entirely, even though the anchor was about \
+that field. A non-answer is not a substitute for a real answer.
 
 # FIELDS (key: meaning)
 {schema_block}
