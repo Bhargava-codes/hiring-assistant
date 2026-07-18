@@ -83,3 +83,22 @@ def _startup() -> None:
 @app.get("/", include_in_schema=False)
 def home() -> RedirectResponse:
     return RedirectResponse(url="/dashboard")
+
+
+@app.get("/debug/llm", include_in_schema=False)
+def debug_llm() -> dict:
+    """Read-only diagnostic: is the key present in THIS process's environment,
+    and roughly what shape is it. Never returns the key itself — only whether
+    it's set and its length, which is enough to catch "not set" vs "set with a
+    stray quote/space/newline" without leaking anything sensitive."""
+    import os
+
+    raw = os.getenv("OPENROUTER_API_KEY")
+    return {
+        "has_api_key": llm.has_api_key(),
+        "key_present_in_env": raw is not None,
+        "key_length": len(raw) if raw else 0,
+        "key_looks_wrapped_in_quotes": bool(raw) and (raw[:1] in "\"'" or raw[-1:] in "\"'"),
+        "intake_model": llm.INTAKE_MODEL,
+        "extract_model": llm.EXTRACT_MODEL,
+    }
