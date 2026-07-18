@@ -12,5 +12,9 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.8"
-      # Optional: set OPENROUTER_API_KEY in the dashboard to enable live LLM
-      # calls. Without it the app runs fine in offline mode.
+      # Secret — its VALUE is entered once in the Render dashboard (Environment
+      # tab), never in git. sync:false means Render stores it and injects it into
+      # every deploy/run automatically. The app reads it via os.getenv on each
+      # boot, so once set it "just works" on every run. Without it, offline mode.
+      - key: OPENROUTER_API_KEY
+        sync: false
