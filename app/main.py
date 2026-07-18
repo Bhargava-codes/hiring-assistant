@@ -6,6 +6,7 @@ layer (read-only stubs). Run with:  make dev   (or)   uvicorn app.main:app --rel
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import markdown as md
 from fastapi import FastAPI, Request
@@ -43,7 +44,12 @@ templates.env.globals.update(
     extract_model=llm.EXTRACT_MODEL,
 )
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Resolve relative to this file (not the CWD) and ensure it exists — the folder
+# is empty (assets are CDN-served), and git doesn't track empty dirs, so it may
+# be absent on a fresh checkout/deploy.
+_static_dir = Path(__file__).resolve().parent / "static"
+_static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 # Make templates available to routers via app state.
 app.state.templates = templates
