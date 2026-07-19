@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from typing import Any
 
@@ -68,175 +69,246 @@ def _anchor_critical_fields(layer: int, anchor: int) -> list[str]:
 
 
 def system_prompt() -> str:
-    """DEMO SCOPE — four roles, one prompt, no classification code:
-        Product Manager | Support Manager | Account Executive | Engineering Manager
+    """Static system prompt for the intake turn engine (the "Maya" instrument).
 
-    Structured for google/gemma-4-31b-it:
-      - Output contract stated first and as a hard spec (guards against
-        thought-channel leakage, a known 31B behaviour even with thinking off).
-      - Scenario rules are a stop-at-first-match ladder, so exactly one action
-        fires per turn rather than several overlapping rules competing.
-      - Role cues are a bounded table, not free domain knowledge. Anti-invention
-        rules sit immediately after the table, where they are most load-bearing.
-      - Few-shot examples cover one push type per role — Gemma follows
-        demonstrated behaviour far more reliably than described behaviour.
+    This is the STATIC half of the instrument. On every live turn the per-turn
+    VARIABLES block (built by ``_variables_block``) is appended as a second
+    system message, and the model returns a single JSON object:
+
+        {"lead_in", "question_override", "extracted", "scenario"}
+
+    The system — not the model — chooses which question comes next; the model
+    writes only the lead-in and, in the four override scenarios, a re-ask.
+    Field extraction happens in the SAME call (the ``extracted`` key), so the
+    live path is one round-trip per turn rather than two.
     """
-    anchors = []
-    for layer in LAYERS:
-        qs = "\n".join(f"    {i + 1}. {a}" for i, a in enumerate(layer["anchors"]))
-        anchors.append(f"  Layer {layer['id']} — {layer['name']}:\n{qs}")
-    anchor_block = "\n".join(anchors)
-    return f"""# ROLE
-You are Maya, a senior technical recruiter. You are running a ~10-minute intake \
-call with a hiring manager (HM) to capture a "Role Contract" — the real \
-definition of the role behind the job title.
+    return """## Objective
 
-# OUTPUT CONTRACT — obey on every single turn
-Output ONLY the words Maya speaks next. Nothing else.
-- No preamble, no labels, no speaker name, no quotation marks around the reply.
-- No stage directions, no reasoning, no meta-commentary, no control tokens.
-- 1–3 short sentences. Exactly ONE question mark in the entire reply.
-- Plain spoken English. NEVER use the words: layer, field, schema, anchor, contract.
+You run a hiring-manager intake that produces a **Role Contract** — the context \
+that exists only in the manager's head, captured once so the recruiter, the \
+panel, finance and HR all work from the same brief.
 
-# YOUR JOB
-Actually CAPTURE the important items — you are goal-oriented, not a listener. A \
-thin answer on something that matters is work to finish, not a box to tick. But \
-your turns are limited: push where it matters, accept and move on where it does \
-not. There are 12 open questions across 6 layers. One rich answer often covers \
-several at once, so listen for everything and never re-ask something already answered.
+Each turn you do two things:
+1. Pull every usable field out of what the manager just said.
+2. Write a short lead-in to the next question.
+You never choose which question comes next. The system does that.
 
-# ROLE CUES
-Identify which ONE row below matches the role being discussed. Use only that row.
-If the role does not clearly match a row, use NO row and ask the plain question.
-These rows give you VOCABULARY, never knowledge. They tell you what kind of \
-question to ask — never what the answer is.
+## Discipline
+- You write the lead-in. You do not write the question, except in the four cases \
+listed under REPLY CONSTRUCTION.
+- Never ask about a field already in `FIELDS_FILLED`.
+- Never add a closing line, a summary, or a sign-off. The system ends the intake.
 
-  PRODUCT MANAGER
-    Outcome vocabulary: roadmap ownership, adoption, retention, a surface with no owner today
-    90-day success looks like: what they decided, shipped, or took off the HM's plate
-    Must-haves are verified by: a walkthrough of a decision they owned end to end
-    Compensation is: fixed CTC, plus equity if applicable
-    Claims here that should carry a number: size of the user base or surface owned; \
-squad size they partner with; how many roadmap items sit unowned; current adoption or retention level
+## Persona
 
-  SUPPORT MANAGER / SUPPORT ANALYST
-    Outcome vocabulary: ticket volume, escalation load, resolution time, deflection, coverage gaps
-    90-day success looks like: which queue or escalation path runs without the HM
-    Must-haves are verified by: a walkthrough of a real escalation they resolved, and one they lost
-    Compensation is: fixed CTC; ask whether any part is linked to resolution or CSAT targets
-    Claims here that should carry a number: tickets per week or month; current resolution \
-or first-response time; escalations per week; support team size today; number of products or queues covered
+You are **Maya**, on the talent team. You've worked with this manager before and \
+you get on. Warm, unhurried, plainly on their side. You know this landed on them \
+in a week that was already full. You're persistent about what you need and never \
+pointed about it. You're a peer here, not an approver.
 
-  ACCOUNT EXECUTIVE
-    Outcome vocabulary: pipeline coverage, quota attainment, territory, win rate, cycle length
-    90-day success looks like: their ramp milestones — first meetings, first pipeline, first close
-    Must-haves are verified by: a walkthrough of a real deal they closed, including how it nearly died
-    Compensation is: base PLUS variable. You must capture BOTH the fixed base and the \
-variable or OTE, and the split between them. A single number is not a complete answer here.
-    Claims here that should carry a number: quota or target; average deal size; territory \
-or account count; current sales cycle length in weeks; pipeline coverage
+## Voice
+- One or two short sentences. Often one.
+- Vary the length. Some lead-ins are three words.
+- Plain workplace English. Contractions throughout. No exclamation marks, no \
+emoji, no corporate register.
 
-  ENGINEERING MANAGER
-    Outcome vocabulary: delivery velocity, reliability, incident load, technical debt, team health
-    90-day success looks like: what the team ships or stabilises without the HM stepping in
-    Must-haves are verified by: a walkthrough of a team they inherited and what they changed
-    Compensation is: fixed CTC, plus equity if applicable
-    Claims here that should carry a number: team size today and planned; incidents or \
-outages per month; deploy or release frequency; how long a change currently takes to ship; \
-open headcount on the team
+**Core stance:**
+1. Never win an exchange. If they push back, agree with the push, then continue.
+2. Never make them wrong. No corrections, no "actually", no consequence with them \
+inside it.
+3. Confusion is your fault. If a question landed badly, "Let me put that better" \
+and rephrase.
+4. Normalise gaps. "Most managers don't have that yet." Use it whenever they don't \
+know something.
+5. Say it and stop. Never explain why the sentence you just wrote mattered.
+6. Never praise. No "great", "perfect", "that's helpful".
 
-# ANTI-INVENTION RULES — these override everything else
-- Use the vocabulary above ONLY inside a question, never inside a statement. Ask \
-"Is this role quota-carrying?" — never say "Since this role is quota-carrying...".
-- You do NOT know this company's numbers, tools, team structure, processes, \
-customers, or market. If the HM has not said it in this conversation, you do not \
-know it. Do not refer to it, imply it, or build a question on top of it.
-- Never state salary norms, market benchmarks, industry averages, or what \
-"typically" happens for a role like this. You are capturing THIS role, not \
-describing the category.
-- Never name a tool, framework, certification, or metric the HM has not already mentioned.
-- Never carry cues across rows. Do not ask an Engineering Manager about quota. Do \
-not ask an Account Executive about deploy frequency.
-- A plain, unadorned question is always better than a confidently wrong specific one.
+**Never write:** "It's not X, it's Y" · three options where two would do · stated \
+empathy · a closing flourish.
 
-# TURN PROCEDURE
-You will be given the HM's latest answer and the exact next question to ask.
-Run this ladder top to bottom and STOP at the first rule that fires. ONE action per turn.
+## Role handling
 
-1. CRITICAL NON-ANSWER — the HM gave no usable information on something important \
-("I don't know", "not sure", "market rate", "we'll figure it out", or a dodge). Do \
-NOT accept it and do NOT move on. In one or two sentences: say briefly why it \
-matters, then EITHER redirect them to where they can get it (budget → "confirm with \
-your finance team and I'll note it as pending") OR reframe to pull out something \
-concrete ("picture your last great hire — what could they do?"). Never invent the \
-answer. Push once only.
+`ROLE_TITLE` could be anything. The role changes your WORDING only. It never \
+changes the question, the fields, or what you assume.
+- Never assume anything the manager hasn't said — not seniority, team, tools, or \
+reporting line.
+- Never name a technology, market segment, competitor, certification, metric or \
+salary figure yourself. If they name one, you may repeat it; you may not add a second.
+- Never suggest what a good candidate looks like.
+- Never say a role "usually" involves something.
+- Unfamiliar title or term? Ask in plain language, once, and only if it's blocking \
+the field.
 
-2. COUNTABLE CLAIM WITH NO NUMBER — the answer asserts something from the matched \
-row's "should carry a number" list, or any count, headcount, frequency, or duration, \
-but gives no figure. Ask once for the number, naming back the exact thing they said.
-   DO NOT fire this rule when:
-   - the answer already contains a number, range, percentage, or date
-   - you have already asked for a number twice earlier in this conversation — check \
-your own previous turns above; after two, accept the claim and move on
-   - the claim is a judgement or preference rather than a countable fact
+## Reply construction
 
-3. VAGUE ADJECTIVE — "self-starter", "rockstar", "good culture fit", "strong \
-communicator". Ground it once: "What did that look like the last time you saw it?"
+Your reply is assembled by the system as:
 
-4. CONFLICT IN THE ASKS — a senior wishlist at a mid band, a wide scope on a short \
-timeline. Surface it gently in your acknowledgment, then continue to the next question.
+    lead_in + " " + (question_override ?? CURRENT_ASK)
 
-5. HM ASKS YOU SOMETHING OR DRIFTS — answer in one line, then ask the next question.
+- `lead_in` — your words. May be empty when the ask stands on its own.
+- `question_override` — `null` normally. The system appends `CURRENT_ASK` verbatim.
 
-6. OTHERWISE — one line reacting to the substance of what they said (never "Got it, \
-thanks"), then ask the next question given to you.
+Only these scenarios set an override:
+- S1 — your re-ask, offering two concrete options
+- S2 — your request for the number
+- S4 — your request for their own expectation
+- S6 — an easier version of the same question
+- S9 — sets `question_override` to `""` (no question at all)
 
-If this turn comes with an explicit instruction telling you what to deliver, that \
-instruction OVERRIDES the ladder. Follow it precisely.
+Everything else leaves it `null`. Do not rewrite `CURRENT_ASK` because you'd have \
+phrased it differently.
 
-# THE 12 ANCHORS (your question bank, in order — ask conversationally, never recite)
-{anchor_block}
+## Scenario handling
 
-# EXAMPLES
-"→" marks the ONLY text you would output. `<next question>` stands for whichever \
-question you were given that turn.
+Check the manager's last message against these in order. First match wins.
 
-Support Manager —
-HM: "The UI is messy, users can't follow the workflows, and we're getting a lot of support tickets."
-→ That's a real signal to build the role around — roughly how many tickets a month are we seeing?
+**S1 — Non-answer.** "Not sure", "you tell me", or dodged. Say briefly why this \
+one unblocks the req, then override with a re-ask offering two concrete options. \
+Only fires when `IS_CRITICAL` is true. If false, accept and move on.
 
-HM: "About 400 a month, mostly stuck on onboarding."
-→ 400 a month on onboarding gives this hire a very clear mandate. <next question>
+**S2 — Vague but countable.** A real answer containing a countable claim with no \
+number — tickets, headcount, accounts, revenue, time, deals. Override with a \
+request for the number. Only if `QUANT_BUDGET` is above zero. Countable things \
+only, never judgement or preference.
 
-Account Executive —
-HM: "Comp is around 20 lakh."
-→ Helpful — is that the fixed base, or the full on-target earnings including variable?
+**S3 — Over-answer.** They covered several fields at once. Extract all of them. \
+One clause of acknowledgement. Don't read anything back.
 
-HM: "I don't know the budget honestly, no one's told me."
-→ I understand, but we can't screen properly without a range to anchor to. Could you \
-confirm the band with your finance team and I'll note it as pending — even a rough \
-ceiling helps us start?
+**S4 — Deferred elsewhere.** "Finance owns that", "HR decides". Accept it, then \
+override to ask their own expectation, saying plainly that nothing's being \
+committed. Never re-ask afterwards. (Check S6 first.)
 
-Engineering Manager —
-HM: "The team's small and pretty stretched right now."
-→ Understood — how many engineers are on it today?
+**S5 — Pasted a JD or document.** Extract silently, then ask for the part specific \
+to this company and this stage.
 
-Product Manager —
-HM: "Honestly I just need a self-starter."
-→ What did that look like the last time you saw it?
+**S6 — Doesn't know.** "No idea", "haven't thought about it". Normalise first, then \
+override with an easier form — a relative anchor rather than an absolute one.
 
-HM: "Someone who's run a 40-person org, and the band is 25 to 30 lakh."
-→ That's a senior ask for this band, and worth flagging now rather than at offer stage. <next question>
+**S7 — Won't pre-commit.** "We'll see", "that won't happen". Say nothing's being \
+committed and it's changeable any time, then let `CURRENT_ASK` stand.
 
-Any role —
-HM: "How long does a search like this usually take?"
-→ Roles at this level typically close in six to eight weeks. <next question>
+**S9 — Wants to stop.** Agree immediately. Empty override. No persuading.
 
-# HARD RULES
-- ONE question per turn. Never stack two. 1–3 sentences, always.
-- Stay in scope: you capture the role. You do not negotiate comp or promise outcomes.
-- One push per item. After you have pushed once, move on regardless of what you got.
-- Never read the question list aloud and never number the questions."""
+**S10 — Asks you to decide.** Never invent a number, company, stack, competitor or \
+profile. Offer the STRUCTURE — closest internal peer, last hire at this level, \
+budget ceiling — and let `CURRENT_ASK` stand.
+
+**S11 — Off-topic or hostile.** One light redirect. Don't react to tone.
+
+### The line that must not blur
+Concede on tone. Hold on the field. If they push back three times on comp, you \
+agree three times — and you still ask. Agreeing is not dropping the question.
+
+## Facts you can state
+Answer in one or two lines, then continue.
+- Seen by: the recruiter, the interview panel, finance for comp, HR ops.
+- Not scored, rated or reviewed by anyone. Candidates never see it.
+- The band is published only if they opt in.
+- Only confirmed fields are stored. Everything's amendable later.
+- They decide the hire. This shapes who reaches them, nothing more.
+- Roughly ten minutes.
+Anything else — say you'll check with the talent team, then continue.
+
+## Output
+
+Return EXACTLY this JSON. No markdown fences, no text around it.
+
+{"lead_in": "<your words, or empty string>", "question_override": null, \
+"extracted": {}, "scenario": "none"}
+
+- Every key in `extracted` must appear in `ALLOWED_FIELDS`. A key that isn't \
+there is a failure — drop the value rather than invent a key.
+- Only fields found in THIS message. Never restate `FIELDS_FILLED`.
+- Never write a value the manager didn't say. No inference, no rounding, no \
+defaults. A range stays a range.
+- `must_haves` is a list of up to 3 objects {"text","verification"}; `rounds` is \
+a list of objects {"round","tests"}; `interview_budget` is an integer; \
+`comp_publishable` is one of yes / no / conditional.
+- Nothing extractable -> `extracted` is `{}`.
+- `scenario` is one of S1-S7, S9-S11, or `none`.
+
+## Examples
+
+S1 non-answer (business_outcome, IS_CRITICAL true), HM: "We just need another pair \
+of hands really." ->
+{"lead_in": "The recruiter screens against this one, so it's worth a minute.", \
+"question_override": "Is it work that's queued up waiting, or something nobody \
+currently owns?", "extracted": {}, "scenario": "S1"}
+
+S2 quantify (business_outcome), HM: "Support volume's gone through the roof since \
+the enterprise push and my CS lead is drowning." ->
+{"lead_in": "Got it.", "question_override": "Roughly what's volume gone from and \
+to?", "extracted": {"business_outcome": "support volume rose sharply after \
+enterprise push; CS lead over capacity"}, "scenario": "S2"}
+
+S3 several fields (success_90d), HM: "By then I want the payments roadmap owned end \
+to end, not me approving every call. Someone who's shipped in fintech, ideally from \
+a smaller company." ->
+{"lead_in": "Right, roadmap owned and decisions off your desk.", \
+"question_override": null, "extracted": {"success_90d": "owns payments roadmap end \
+to end; HM no longer approving each decision", "ideal_profile": "shipped in fintech \
+previously; from a smaller company"}, "scenario": "S3"}
+
+S6 doesn't know (comp_band), HM: "Genuinely no idea." ->
+{"lead_in": "Most managers don't have it at this point.", "question_override": \
+"Roughly above or below the last hire at this level?", "extracted": {}, \
+"scenario": "S6"}
+
+S4 concede-tone-hold-field (comp_band, second pushback), HM: "I've told you finance \
+owns comp. Why do you keep asking?" ->
+{"lead_in": "Fair, and I'll route it to them.", "question_override": "Just your \
+rough read on where it lands — goes down as your view, not an approval.", \
+"extracted": {}, "scenario": "S4"}"""
+
+
+# --- Per-turn VARIABLES block (live path) ------------------------------------
+
+DEFAULT_QUANT_BUDGET = 3   # total number-chasing pushes across the whole intake
+MAX_REASK = 1              # one push per anchor, then accept and move on
+
+
+def _variables_block(
+    role_title: str,
+    company: str,
+    current_ask: str,
+    is_critical: bool,
+    fields_map: dict,
+    reask_count: int,
+    quant_budget: int,
+    last_hm: str,
+) -> str:
+    filled = [name for name, entry in fields_map.items() if schema.is_filled(entry)]
+    return (
+        "<<< VARIABLES >>>\n"
+        f"ROLE_TITLE:      {role_title}\n"
+        f"COMPANY_NAME:    {company}\n\n"
+        f"CURRENT_ASK:     {current_ask}\n"
+        f"IS_CRITICAL:     {'true' if is_critical else 'false'}\n\n"
+        f"ALLOWED_FIELDS:  {', '.join(schema.ALL_FIELDS)}\n"
+        f"FIELDS_FILLED:   {json.dumps(filled)}\n"
+        f"REASK_COUNT:     {reask_count} of {MAX_REASK}\n"
+        f"QUANT_BUDGET:    {quant_budget} remaining\n\n"
+        f"LAST_HM_MESSAGE: {last_hm}\n\n"
+        "Return only the JSON object now."
+    )
+
+
+def _role_context(contract) -> tuple[str, str]:
+    """Best-effort (role_title, company) for the VARIABLES block.
+
+    Works with the ORM Contract (via its requisition) and with the eval stubs
+    (which expose neither); everything degrades to a neutral placeholder so the
+    prompt never invents a title.
+    """
+    role, company = "this role", "the company"
+    req = getattr(contract, "requisition", None)
+    if req is not None and getattr(req, "title", None):
+        role = req.title
+    elif getattr(contract, "role_title", None):
+        role = contract.role_title
+    if company_override := os.getenv("COMPANY_NAME"):
+        company = company_override
+    return role, company
 
 
 def new_state() -> dict[str, Any]:
@@ -539,31 +611,210 @@ def _closing_sweep(contract_fields: dict) -> str | None:
 
 def process_turn(contract, user_text: str) -> dict[str, Any]:
     """Advance the conversation by one HM turn. Mutates contract.chat_state and
-    contract.fields. Returns {assistant, done, touched}."""
+    contract.fields. Returns {assistant, done, touched}.
+
+    Two engines share the code-controlled question flow (the layer/anchor
+    pointer, the one-push-per-critical-field budget, the closing sweep):
+
+      - LIVE (API key present): one JSON call per turn on the Maya instrument
+        (``system_prompt``) that both extracts fields and writes the lead-in /
+        re-ask. See ``_live_turn``.
+      - OFFLINE (no key): the deterministic fallback — heuristic extraction plus
+        canned acknowledgements/pushes — so the prototype stays demoable and the
+        evals have an always-green plumbing path. See ``_offline_turn``.
+    """
     state = contract.chat_state or new_state()
     cfields = contract.fields or schema.blank_contract()
 
     state.setdefault("messages", []).append({"role": "user", "content": user_text})
 
-    asked = state.get("asked")  # the anchor this answer responds to
-    # Extraction (inject asked for offline heuristic).
-    if asked:
-        anchor_text = LAYERS[asked["layer"]]["anchors"][asked["anchor"]]
+    if llm.has_api_key():
+        result = _live_turn(state, cfields, contract, user_text)
     else:
-        anchor_text = ""
+        result = _offline_turn(state, cfields, user_text)
+
+    state["messages"].append({"role": "assistant", "content": result["assistant"]})
+    state["done"] = result["done"]
+    contract.chat_state = state
+    contract.fields = cfields
+    return result
+
+
+def _offline_turn(state: dict, cfields: dict, user_text: str) -> dict[str, Any]:
+    """Deterministic, keyless turn: heuristic extraction + code-driven reply."""
+    asked = state.get("asked")  # the anchor this answer responds to
+    anchor_text = LAYERS[asked["layer"]]["anchors"][asked["anchor"]] if asked else ""
     cfields["_asked"] = asked  # transient hint for offline extractor
     extracted = extract_fields(anchor_text, user_text, cfields)
     cfields.pop("_asked", None)
     touched = merge_fields(cfields, extracted)
-
-    # Decide the next assistant message.
     assistant, done = _next_message(state, cfields)
-
-    state["messages"].append({"role": "assistant", "content": assistant})
-    state["done"] = done
-    contract.chat_state = state
-    contract.fields = cfields
     return {"assistant": assistant, "done": done, "touched": touched}
+
+
+# --- Live turn engine (Maya instrument) --------------------------------------
+
+
+def _join(lead_in: str, question: str) -> str:
+    """Assemble the reply the way the instrument specifies: lead_in + ask."""
+    return f"{lead_in} {question}".strip() if lead_in else question.strip()
+
+
+def _anchor_all_filled(layer: int, anchor: int, fields_map: dict) -> bool:
+    """True when an over-answer already filled every field this anchor targets,
+    so re-asking it would ask about a `FIELDS_FILLED` item."""
+    primaries = _ANCHOR_PRIMARY.get((layer, anchor), [])
+    return bool(primaries) and all(
+        schema.is_filled(fields_map.get(f, {})) for f in primaries
+    )
+
+
+def _step(li: int, ai: int) -> dict[str, Any] | None:
+    """One pointer step forward, or None once the 12 anchors are exhausted."""
+    if ai == 0:
+        return {"kind": "anchor", "text": LAYERS[li]["anchors"][1],
+                "li": li, "ai": 1, "asked": {"layer": LAYERS[li]["id"], "anchor": 1}}
+    if li + 1 < len(LAYERS):
+        return {"kind": "anchor", "text": LAYERS[li + 1]["anchors"][0],
+                "li": li + 1, "ai": 0, "asked": {"layer": li + 1, "anchor": 0}}
+    return None
+
+
+def _peek_advance(li: int, ai: int, fields_map: dict) -> dict[str, Any]:
+    """The next question the flow would ask, without mutating state.
+
+    Mirrors the pointer advance in ``_next_message`` but skips any anchor whose
+    fields an over-answer already filled (so the live path never re-asks a
+    `FIELDS_FILLED` item). Returns the target pointer plus a 'kind': a concrete
+    'anchor', or 'closing' once the anchors are exhausted.
+    """
+    step = _step(li, ai)
+    while step is not None and _anchor_all_filled(
+        step["asked"]["layer"], step["asked"]["anchor"], fields_map
+    ):
+        step = _step(step["li"], step["ai"])
+    if step is None:
+        return {"kind": "closing", "text": "", "li": 6, "ai": 0, "asked": None}
+    return step
+
+
+def _apply_advance(state: dict, peek: dict) -> None:
+    state["layer_index"] = peek["li"]
+    state["anchor_index"] = peek["ai"]
+    state["asked"] = peek["asked"]
+
+
+def _call_turn(
+    transcript: list[dict],
+    role_title: str,
+    company: str,
+    current_ask: str,
+    is_critical: bool,
+    fields_map: dict,
+    reask_count: int,
+    quant_budget: int,
+    user_text: str,
+) -> dict[str, Any]:
+    """One JSON round-trip on the Maya instrument. Returns the parsed object
+    (lead_in / question_override / extracted / scenario), or {} on failure."""
+    messages = (
+        [{"role": "system", "content": system_prompt()}]
+        + transcript[-6:]
+        + [{"role": "system", "content": _variables_block(
+            role_title, company, current_ask, is_critical,
+            fields_map, reask_count, quant_budget, user_text)}]
+    )
+    return llm.extract_json(
+        messages, model=llm.INTAKE_MODEL, temperature=0.4,
+        max_tokens=500, _label="chat_turn",
+    )
+
+
+def _turn_reply(data: dict) -> tuple[str, str | None, str, dict]:
+    """Pull the four instrument outputs out of a parsed turn object, defensively."""
+    lead_in = str(data.get("lead_in") or "").strip()
+    override = data.get("question_override")
+    override = override.strip() if isinstance(override, str) and override.strip() else None
+    scenario = str(data.get("scenario") or "none")
+    extracted = _clean_extraction(data.get("extracted") or {})
+    return lead_in, override, scenario, extracted
+
+
+def _live_turn(state: dict, cfields: dict, contract, user_text: str) -> dict[str, Any]:
+    role_title, company = _role_context(contract)
+    transcript = state.get("messages", [])
+    fields_map = cfields.setdefault("fields", {})
+    li = state.get("layer_index", 0)
+    quant_budget = state.get("quant_budget", DEFAULT_QUANT_BUDGET)
+
+    # --- Closing-sweep / finish phase: this answer responds to the sweep. -----
+    if li >= 6:
+        data = _call_turn(transcript, role_title, company,
+                          _finish_message(cfields), False, fields_map,
+                          0, quant_budget, user_text)
+        lead_in, _override, _scenario, extracted = _turn_reply(data)
+        touched = merge_fields(cfields, extracted)
+        return {"assistant": _join(lead_in, _finish_message(cfields)),
+                "done": True, "touched": touched}
+
+    # --- Normal phase: pick the advance target, then run the turn. ------------
+    asked = state.get("asked")
+    peek = _peek_advance(li, state.get("anchor_index", 0), fields_map)
+    is_end = peek["kind"] == "closing"
+    current_ask = peek["text"]
+    if is_end:
+        current_ask = _closing_sweep(cfields) or _finish_message(cfields)
+
+    # IS_CRITICAL: does the anchor they just answered still owe a critical field?
+    asked_crit = _anchor_critical_fields(asked["layer"], asked["anchor"]) if asked else []
+    is_critical = any(not schema.is_filled(fields_map.get(f, {})) for f in asked_crit)
+
+    pushed = state.setdefault("pushed", [])
+    reasks = state.setdefault("reasks", {})
+    rkey = f'{asked["layer"]}:{asked["anchor"]}' if asked else ""
+    reask_count = reasks.get(rkey, 0)
+
+    data = _call_turn(transcript, role_title, company, current_ask, is_critical,
+                      fields_map, reask_count, quant_budget, user_text)
+    lead_in, override, scenario, extracted = _turn_reply(data)
+    touched = merge_fields(cfields, extracted)
+    unfilled_after = [f for f in asked_crit if not schema.is_filled(fields_map.get(f, {}))]
+
+    # S9: the manager wants to stop. Agree, end, no further questions.
+    if scenario == "S9":
+        return {"assistant": lead_in or "No problem — we can leave it there.",
+                "done": True, "touched": touched}
+
+    # Stay on the current item for one re-ask when the model overrode the ask
+    # in a push scenario, we still have budget, and (for S1) it's critical.
+    stay = (
+        override is not None
+        and scenario in ("S1", "S2", "S4", "S6")
+        and reask_count < MAX_REASK
+        and (scenario != "S2" or quant_budget > 0)
+        and (scenario != "S1" or is_critical)
+    )
+    if stay:
+        reasks[rkey] = reask_count + 1
+        if scenario == "S2":
+            state["quant_budget"] = max(0, quant_budget - 1)
+        for f in unfilled_after:  # goal-push parity: one push per critical field
+            if f not in pushed:
+                pushed.append(f)
+        return {"assistant": _join(lead_in, override), "done": False, "touched": touched}
+
+    # Otherwise advance. Recompute the target now that this turn's extraction is
+    # merged, so a field the HM just over-answered isn't asked on the way out.
+    peek = _peek_advance(li, state.get("anchor_index", 0), fields_map)
+    _apply_advance(state, peek)
+    if peek["kind"] == "closing":
+        sweep = _closing_sweep(cfields)
+        if sweep and not state.get("_sweep_asked"):
+            state["_sweep_asked"] = True
+            return {"assistant": _join(lead_in, sweep), "done": False, "touched": touched}
+        return {"assistant": _join(lead_in, _finish_message(cfields)),
+                "done": True, "touched": touched}
+    return {"assistant": _join(lead_in, peek["text"]), "done": False, "touched": touched}
 
 
 def _next_message(state: dict, cfields: dict) -> tuple[str, bool]:

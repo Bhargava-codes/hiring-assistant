@@ -99,6 +99,20 @@ def _extract(layer: int, aidx: int, answer: str) -> dict:
     return agent.extract_fields(LAYERS[layer]["anchors"][aidx], answer, cur)
 
 
+class _StubContract:
+    """Minimal stand-in for the ORM Contract — process_turn only touches these."""
+    def __init__(self):
+        self.fields = schema.blank_contract()
+        st = agent.new_state(); agent.start(st)
+        self.chat_state = st
+
+
+def _one_turn(answer: str) -> str:
+    """One full intake turn through the real engine (live or offline), returning
+    Maya's reply. Exercises whichever path the API key selects."""
+    return agent.process_turn(_StubContract(), answer)["assistant"]
+
+
 def _distinct(o: dict, *keys) -> bool:
     vals = [str(o.get(k)) for k in keys if k in o]
     return len(vals) == len(set(vals)) and len(vals) == len(keys)
@@ -165,10 +179,8 @@ def build_suite() -> list[dict]:
 
         # ===== STAGE 1 — Conversational turn =================================
         {"stage": "1 · Discovery agent", "name": "Acknowledge + ask next anchor",
-         "run": lambda: agent._acknowledge_and_ask(
-            [{"role": "assistant", "content": LAYERS[0]["anchors"][0]},
-             {"role": "user", "content": "Support doubled after our enterprise push and the CS lead is drowning."}],
-            LAYERS[0]["anchors"][1]),
+         "run": lambda: _one_turn(
+            "Support doubled after our enterprise push and the CS lead is drowning."),
          "checks": [
             C("asks the intended next question", lambda o: LAYERS[0]["anchors"][1][:30].lower() in o.lower()),
             C("never leaks internal jargon (layer/field/schema)",
